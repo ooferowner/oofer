@@ -1,11 +1,8 @@
---// Vape-Style Sidebar with Matrix Title + Panels (Rainbow + Matrix FX) + Mobile Support + Purple Blur + Toggle Button
-
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- Background Blur (purple) -- toggled with OOF button
 local Blur = Instance.new("BlurEffect")
 Blur.Size = 25
 Blur.Enabled = true
@@ -18,12 +15,10 @@ Tint.Brightness = -0.05
 Tint.Enabled = true
 Tint.Parent = Lighting
 
--- ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Sidebar
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 200, 0, 400)
 Sidebar.Position = UDim2.new(0, 20, 0.25, 0)
@@ -35,7 +30,6 @@ Sidebar.Parent = ScreenGui
 local Corner = Instance.new("UICorner", Sidebar)
 Corner.CornerRadius = UDim.new(0, 6)
 
--- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -46,7 +40,6 @@ Title.TextColor3 = Color3.fromRGB(0, 255, 0)
 Title.BorderSizePixel = 0
 Title.Parent = Sidebar
 
--- Matrix text flicker for "OOFER"
 task.spawn(function()
     local text = "OOFER"
     while true do
@@ -61,7 +54,6 @@ task.spawn(function()
     end
 end)
 
--- Rainbow cycle (title + headers)
 task.spawn(function()
     while true do
         local t = tick() * 0.5
@@ -78,7 +70,6 @@ task.spawn(function()
     end
 end)
 
--- Category container (sidebar)
 local container = Instance.new("Frame", Sidebar)
 container.Size = UDim2.new(1, -8, 1, -40)
 container.Position = UDim2.new(0, 4, 0, 35)
@@ -88,7 +79,6 @@ local layout = Instance.new("UIListLayout", container)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 4)
 
--- Categories
 local Categories = {
     {name = "Combat",    id = "rbxassetid://3926305904", offset = Vector2.new(4, 4)},
     {name = "Blatant",   id = "rbxassetid://3926305904", offset = Vector2.new(76, 4)},
@@ -100,11 +90,9 @@ local Categories = {
     {name = "Targets",   id = "rbxassetid://3926307971", offset = Vector2.new(148, 4)},
 }
 
--- Dragging utility
 local function MakeDraggable(frame, dragHandle)
     local dragging, dragInput, dragStart, startPos
     local UserInputService = game:GetService("UserInputService")
-
     local function update(input)
         local delta = input.Position - dragStart
         frame.Position = UDim2.new(
@@ -112,13 +100,11 @@ local function MakeDraggable(frame, dragHandle)
             startPos.Y.Scale, startPos.Y.Offset + delta.Y
         )
     end
-
     dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -126,13 +112,11 @@ local function MakeDraggable(frame, dragHandle)
             end)
         end
     end)
-
     dragHandle.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             update(input)
@@ -142,7 +126,6 @@ end
 
 MakeDraggable(Sidebar, Title)
 
--- Create panels
 local PanelXOffset = 230
 for i, cat in ipairs(Categories) do
     local Btn = Instance.new("TextButton", container)
@@ -212,12 +195,10 @@ for i, cat in ipairs(Categories) do
         Content.BackgroundTransparency = 1
         Content.ScrollBarThickness = 4
 
-        -- Auto-stack modules inside panels
         local UIList = Instance.new("UIListLayout", Content)
         UIList.SortOrder = Enum.SortOrder.LayoutOrder
         UIList.Padding = UDim.new(0, 4)
 
-        -- Matrix overlay inside panel
         task.spawn(function()
             while Panel.Parent do
                 local MatrixChar = Instance.new("TextLabel")
@@ -247,7 +228,6 @@ for i, cat in ipairs(Categories) do
     end)
 end
 
--- "OOF" Toggle Button
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0, 80, 0, 30)
 ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
@@ -261,7 +241,6 @@ ToggleBtn.Parent = ScreenGui
 local BtnCorner = Instance.new("UICorner", ToggleBtn)
 BtnCorner.CornerRadius = UDim.new(0, 6)
 
--- Matrix flicker "OOF"
 task.spawn(function()
     local text = "OOF"
     while true do
@@ -276,7 +255,6 @@ task.spawn(function()
     end
 end)
 
--- Toggle logic
 local Visible = true
 ToggleBtn.MouseButton1Click:Connect(function()
     Visible = not Visible
