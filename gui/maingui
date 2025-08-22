@@ -1,337 +1,291 @@
--- Hostile GUI Shell by dracule_
-local gui = Instance.new("ScreenGui")
-gui.Name = "HostileShell"
-gui.ResetOnSpawn = false
-gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+--// Vape-Style Sidebar with Matrix Title + Panels (Rainbow + Matrix FX) + Mobile Support + Purple Blur + Toggle Button
 
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
-local player = game.Players.LocalPlayer
-local panels = {}
-local currentZ = 10
-local tabNames = { "Blatant", "Combat", "Render", "Settings", "Utility" }
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
--- Store module update functions for reload
-local moduleUpdaters = {}
+-- Background Blur (purple) -- toggled with OOF button
+local Blur = Instance.new("BlurEffect")
+Blur.Size = 25
+Blur.Enabled = true
+Blur.Parent = Lighting
 
-local function enableDrag(frame, dragArea)
-    local dragging, dragStart, startPos = false
-    dragArea.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 and frame.Visible then
+local Tint = Instance.new("ColorCorrectionEffect")
+Tint.TintColor = Color3.fromRGB(180, 0, 255)
+Tint.Saturation = 0.3
+Tint.Brightness = -0.05
+Tint.Enabled = true
+Tint.Parent = Lighting
+
+-- ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Sidebar
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 200, 0, 400)
+Sidebar.Position = UDim2.new(0, 20, 0.25, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Sidebar.BackgroundTransparency = 0.2
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = ScreenGui
+
+local Corner = Instance.new("UICorner", Sidebar)
+Corner.CornerRadius = UDim.new(0, 6)
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Text = ""
+Title.Font = Enum.Font.Arcade
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(0, 255, 0)
+Title.BorderSizePixel = 0
+Title.Parent = Sidebar
+
+-- Matrix text flicker for "OOFER"
+task.spawn(function()
+    local text = "OOFER"
+    while true do
+        local display = ""
+        for i = 1, #text do
+            display = display .. string.char(math.random(33, 126))
+        end
+        Title.Text = display
+        task.wait(0.05)
+        Title.Text = text
+        task.wait(0.1)
+    end
+end)
+
+-- Rainbow cycle (title + headers)
+task.spawn(function()
+    while true do
+        local t = tick() * 0.5
+        local r = math.sin(t) * 127 + 128
+        local g = math.sin(t + 2) * 127 + 128
+        local b = math.sin(t + 4) * 127 + 128
+        Title.TextColor3 = Color3.fromRGB(r, g, b)
+        for _, panel in pairs(ScreenGui:GetChildren()) do
+            if panel:FindFirstChild("Header") then
+                panel.Header.TextColor3 = Color3.fromRGB(r, g, b)
+            end
+        end
+        task.wait(0.05)
+    end
+end)
+
+-- Category container (sidebar)
+local container = Instance.new("Frame", Sidebar)
+container.Size = UDim2.new(1, -8, 1, -40)
+container.Position = UDim2.new(0, 4, 0, 35)
+container.BackgroundTransparency = 1
+
+local layout = Instance.new("UIListLayout", container)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 4)
+
+-- Categories
+local Categories = {
+    {name = "Combat",    id = "rbxassetid://3926305904", offset = Vector2.new(4, 4)},
+    {name = "Blatant",   id = "rbxassetid://3926305904", offset = Vector2.new(76, 4)},
+    {name = "Render",    id = "rbxassetid://3926305904", offset = Vector2.new(112, 4)},
+    {name = "Utility",   id = "rbxassetid://3926305904", offset = Vector2.new(184, 4)},
+    {name = "World",     id = "rbxassetid://3926305904", offset = Vector2.new(220, 4)},
+    {name = "Friends",   id = "rbxassetid://3926307971", offset = Vector2.new(184, 4)},
+    {name = "Profiles",  id = "rbxassetid://3926307971", offset = Vector2.new(292, 4)},
+    {name = "Targets",   id = "rbxassetid://3926307971", offset = Vector2.new(148, 4)},
+}
+
+-- Dragging utility
+local function MakeDraggable(frame, dragHandle)
+    local dragging, dragInput, dragStart, startPos
+    local UserInputService = game:GetService("UserInputService")
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
-    dragArea.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
     end)
+
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        if input == dragInput and dragging then
+            update(input)
         end
     end)
 end
 
-for _, name in ipairs(tabNames) do
-    local panel = Instance.new("ScrollingFrame")
-    panel.Name = name .. "Panel"
-    panel.Size = UDim2.new(0, 220, 0, 520)
-    panel.Position = UDim2.new(0.5, 120, 0.5, -260)
-    panel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    panel.BackgroundTransparency = 0.3
-    panel.BorderSizePixel = 0
-    panel.Visible = false
-    panel.ZIndex = 2
-    panel.CanvasSize = UDim2.new(0, 0, 0, 1000)
-    panel.ScrollingDirection = Enum.ScrollingDirection.Y
-    panel.ScrollBarThickness = 4
-    panel.ScrollBarImageColor3 = Color3.fromRGB(120, 0, 180)
-    panel.ClipsDescendants = true
-    panel.Parent = gui
+MakeDraggable(Sidebar, Title)
 
-    local header = Instance.new("TextLabel")
-    header.Size = UDim2.new(1, 0, 0, 40)
-    header.BackgroundColor3 = Color3.fromRGB(120, 0, 180)
-    header.BorderSizePixel = 0
-    header.Font = Enum.Font.SciFi
-    header.TextSize = 18
-    header.TextColor3 = Color3.fromRGB(255, 255, 255)
-    header.Text = name
-    header.TextXAlignment = Enum.TextXAlignment.Center
-    header.ZIndex = 3
-    header.Parent = panel
+-- Create panels
+local PanelXOffset = 230
+for i, cat in ipairs(Categories) do
+    local Btn = Instance.new("TextButton", container)
+    Btn.Size = UDim2.new(1, -6, 0, 26)
+    Btn.BackgroundTransparency = 1
+    Btn.AutoButtonColor = false
+    Btn.Text = ""
+    Btn.BorderSizePixel = 0
 
-    enableDrag(panel, header)
+    local Icon = Instance.new("ImageLabel", Btn)
+    Icon.Size = UDim2.new(0, 18, 0, 18)
+    Icon.Position = UDim2.new(0, 6, 0.5, -9)
+    Icon.BackgroundTransparency = 1
+    Icon.Image = cat.id
+    Icon.ImageRectOffset = cat.offset
+    Icon.ImageRectSize = Vector2.new(36, 36)
+    Icon.ImageColor3 = Color3.fromRGB(200, 200, 200)
 
-    local yTrack = Instance.new("IntValue")
-    yTrack.Name = "NextModuleY"
-    yTrack.Value = 50
-    yTrack.Parent = panel
+    local Label = Instance.new("TextLabel", Btn)
+    Label.Size = UDim2.new(1, -28, 1, 0)
+    Label.Position = UDim2.new(0, 28, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = cat.name
+    Label.Font = Enum.Font.Arcade
+    Label.TextSize = 16
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-    yTrack:GetPropertyChangedSignal("Value"):Connect(function()
-        panel.CanvasSize = UDim2.new(0, 0, 0, yTrack.Value + 20)
+    Btn.MouseEnter:Connect(function()
+        Label.TextColor3 = Color3.fromRGB(0, 200, 255)
+        Icon.ImageColor3 = Color3.fromRGB(0, 200, 255)
+    end)
+    Btn.MouseLeave:Connect(function()
+        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Icon.ImageColor3 = Color3.fromRGB(200, 200, 200)
     end)
 
-    panels[name] = panel
-end
+    Btn.MouseButton1Click:Connect(function()
+        if ScreenGui:FindFirstChild(cat.name .. "Panel") then return end
 
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 220, 0, 520)
-main.Position = UDim2.new(0.5, -110, 0.5, -260)
-main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-main.BackgroundTransparency = 0.3
-main.BorderSizePixel = 0
-main.Active = true
-main.Draggable = false
-main.Parent = gui
+        local Panel = Instance.new("Frame")
+        Panel.Name = cat.name .. "Panel"
+        Panel.Size = UDim2.new(0, 200, 0, 400)
+        Panel.Position = Sidebar.Position + UDim2.new(0, PanelXOffset * i, 0, 0)
+        Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        Panel.BackgroundTransparency = 0.2
+        Panel.BorderSizePixel = 0
+        Panel.Parent = ScreenGui
 
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 40)
-topBar.BackgroundColor3 = Color3.fromRGB(120, 0, 180)
-topBar.BackgroundTransparency = 0.1
-topBar.BorderSizePixel = 0
-topBar.ZIndex = 2
-topBar.Active = true
-topBar.Parent = main
+        local Corner2 = Instance.new("UICorner", Panel)
+        Corner2.CornerRadius = UDim.new(0, 6)
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 1, 0)
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.SciFi
-title.TextSize = 20
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextXAlignment = Enum.TextXAlignment.Center
-title.ZIndex = 3
-title.Parent = topBar
+        local Header = Instance.new("TextLabel")
+        Header.Name = "Header"
+        Header.Size = UDim2.new(1, 0, 0, 30)
+        Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        Header.Text = cat.name
+        Header.Font = Enum.Font.Arcade
+        Header.TextSize = 18
+        Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Header.BorderSizePixel = 0
+        Header.Parent = Panel
 
-local glitchFrames = { "00fΞr", "0Øfer", "O0fΞr", "0⚡fer", "00fΞr", "00f3r", "0Ofer", "00fer" }
-spawn(function()
-    while true do
-        for _, text in ipairs(glitchFrames) do
-            title.Text = text
-            wait(0.08)
-        end
-    end
-end)
+        local Content = Instance.new("ScrollingFrame", Panel)
+        Content.Size = UDim2.new(1, 0, 1, -30)
+        Content.Position = UDim2.new(0, 0, 0, 30)
+        Content.BackgroundTransparency = 1
+        Content.ScrollBarThickness = 4
 
-for i, name in ipairs(tabNames) do
-    local tab = Instance.new("TextButton")
-    tab.Size = UDim2.new(1, -20, 0, 90)
-    tab.Position = UDim2.new(0, 10, 0, 40 + (i - 1) * 90)
-    tab.BackgroundTransparency = 0.2
-    tab.BackgroundColor3 = Color3.fromRGB(20, 0, 40)
-    tab.Text = name
-    tab.Font = Enum.Font.SciFi
-    tab.TextSize = 22
-    tab.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tab.TextXAlignment = Enum.TextXAlignment.Left
-    tab.ZIndex = 2
-    tab.Parent = main
+        -- Auto-stack modules inside panels
+        local UIList = Instance.new("UIListLayout", Content)
+        UIList.SortOrder = Enum.SortOrder.LayoutOrder
+        UIList.Padding = UDim.new(0, 4)
 
-    tab.MouseButton1Click:Connect(function()
-        local panel = panels[name]
-        if panel then
-            panel.Visible = not panel.Visible
-            if panel.Visible then
-                currentZ += 1
-                panel.ZIndex = currentZ
-                for _, child in ipairs(panel:GetChildren()) do
-                    if child:IsA("GuiObject") then
-                        child.ZIndex = currentZ + 1
+        -- Matrix overlay inside panel
+        task.spawn(function()
+            while Panel.Parent do
+                local MatrixChar = Instance.new("TextLabel")
+                MatrixChar.Size = UDim2.new(0, 14, 0, 14)
+                MatrixChar.Position = UDim2.new(math.random(), 0, 0, -20)
+                MatrixChar.BackgroundTransparency = 1
+                MatrixChar.Font = Enum.Font.Code
+                MatrixChar.TextSize = 14
+                MatrixChar.TextColor3 = Color3.fromRGB(0, 255, 0)
+                MatrixChar.Text = string.char(math.random(33, 126))
+                MatrixChar.Parent = Panel
+
+                task.spawn(function()
+                    for y = -20, 420, 10 do
+                        if not MatrixChar.Parent then break end
+                        MatrixChar.Position = UDim2.new(MatrixChar.Position.X.Scale, 0, 0, y)
+                        task.wait(0.03)
                     end
-                end
-            else
-                panel.ZIndex = 2
-                for _, child in ipairs(panel:GetChildren()) do
-                    if child:IsA("GuiObject") then
-                        child.ZIndex = 3
-                    end
-                end
-            end
-        end
-    end)
-end
+                    MatrixChar:Destroy()
+                end)
 
-local bottomBar = Instance.new("Frame")
-bottomBar.Size = UDim2.new(1, 0, 0, 30)
-bottomBar.Position = UDim2.new(0, 0, 1, -30)
-bottomBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-bottomBar.BackgroundTransparency = 0.4
-bottomBar.BorderSizePixel = 0
-bottomBar.ZIndex = 2
-bottomBar.Parent = main
-
-enableDrag(main, topBar)
-
-local oofButton = Instance.new("TextButton")
-oofButton.Size = UDim2.new(0, 100, 0, 32)
-oofButton.Position = UDim2.new(1, -110, 0, 10)
-oofButton.BackgroundColor3 = Color3.fromRGB(120, 0, 180)
-oofButton.BorderSizePixel = 0
-oofButton.Font = Enum.Font.SciFi
-oofButton.TextSize = 18
-oofButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-oofButton.Text = "OOF"
-oofButton.ZIndex = 999
-oofButton.Parent = gui
-
-local oofState = true
-local oofGlitchFrames = { "O⚡F", "ØØF", "0O0F", "O0FΞ", "OOF" }
-
-oofButton.MouseButton1Click:Connect(function()
-    oofState = not oofState
-    main.Visible = oofState
-    for _, panel in pairs(panels) do
-        panel.Visible = oofState
-    end
-end)
-
-spawn(function()
-    while true do
-        for _, text in ipairs(oofGlitchFrames) do
-            oofButton.Text = text
-            oofButton.Size = UDim2.new(0, 100 + math.random(-2, 2), 0, 32 + math.random(-1, 1))
-            wait(0.07)
-        end
-    end
-end)
--- 🔧 Required Setup
-local CombatPanel = panels["Combat"]
-if not CombatPanel:FindFirstChild("NextModuleY") then
-    local yTrack = Instance.new("IntValue")
-    yTrack.Name = "NextModuleY"
-    yTrack.Value = 50
-    yTrack.Parent = CombatPanel
-end
-
-local moduleName = "KillAura"
-local keybind = Enum.KeyCode.R
-local player = game.Players.LocalPlayer
-local active = player:GetAttribute(moduleName .. "Active") or false
-
--- 🔁 Main Toggle Button
-local moduleLabel = Instance.new("TextButton")
-moduleLabel.Size = UDim2.new(1, -20, 0, 32)
-moduleLabel.Position = UDim2.new(0, 10, 0, CombatPanel.NextModuleY.Value)
-moduleLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-moduleLabel.BorderSizePixel = 0
-moduleLabel.Font = Enum.Font.SciFi
-moduleLabel.TextSize = 20
-moduleLabel.TextColor3 = active and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(255, 255, 255)
-moduleLabel.Text = moduleName
-moduleLabel.TextXAlignment = Enum.TextXAlignment.Left
-moduleLabel.ZIndex = CombatPanel.ZIndex + 2
-moduleLabel.Parent = CombatPanel
-
-CombatPanel.NextModuleY.Value += 34
-
--- ⚙️ Settings Frame
-local settingsFrame = Instance.new("Frame")
-settingsFrame.Size = UDim2.new(1, -20, 0, 64)
-settingsFrame.Position = UDim2.new(0, 10, 0, CombatPanel.NextModuleY.Value)
-settingsFrame.BackgroundTransparency = 1
-settingsFrame.Visible = false
-settingsFrame.ZIndex = CombatPanel.ZIndex + 1
-settingsFrame.Parent = CombatPanel
-
-CombatPanel.NextModuleY.Value += 64
-
--- 🔑 Keybind Button
-local keybindButton = Instance.new("TextButton")
-keybindButton.Size = UDim2.new(1, 0, 0, 32)
-keybindButton.Position = UDim2.new(0, 0, 0, 0)
-keybindButton.BackgroundTransparency = 1
-keybindButton.Font = Enum.Font.SciFi
-keybindButton.TextSize = 18
-keybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-keybindButton.Text = "Keybind: [" .. keybind.Name .. "]"
-keybindButton.ZIndex = settingsFrame.ZIndex + 1
-keybindButton.Parent = settingsFrame
-
-keybindButton.MouseButton1Click:Connect(function()
-    keybindButton.Text = "Press any key..."
-    local conn
-    conn = game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
-        if not gpe and input.UserInputType == Enum.UserInputType.Keyboard then
-            keybind = input.KeyCode
-            keybindButton.Text = "Keybind: [" .. keybind.Name .. "]"
-            conn:Disconnect()
-        end
-    end)
-end)
-
--- ⚔️ Combat Logic
-local function attackLoop()
-    spawn(function()
-        while true do
-            task.wait(0.2)
-            if active then
-                local char = player.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                if not root then continue end
-
-                for _, target in ipairs(game.Players:GetPlayers()) do
-                    if target ~= player and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                        local dist = (target.Character.HumanoidRootPart.Position - root.Position).Magnitude
-                        if dist <= 18 then
-                            char:SetPrimaryPartCFrame(CFrame.lookAt(root.Position, target.Character.HumanoidRootPart.Position))
-                            local remote = require(game:GetService("ReplicatedStorage"):WaitForChild("TS"):WaitForChild("remotes"):WaitForChild("default"):WaitForChild("ClientStore")).AttackEntity
-                            remote:FireServer({["entity"] = target.Character})
-                            break
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- 🔁 Toggle State Logic
-local function updateState(state)
-    active = state
-    player:SetAttribute(moduleName .. "Active", active)
-    moduleLabel.TextColor3 = active and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(255, 255, 255)
-end
-
-updateState(active)
-attackLoop()
-
--- 🔥 Keybind Activation
-game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == keybind then
-        updateState(not active)
-    end
-end)
-
--- 🖱️ Double-click / Long-press to open settings
-local lastClick = 0
-moduleLabel.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local now = tick()
-        if now - lastClick < 0.3 then
-            settingsFrame.Visible = not settingsFrame.Visible
-        end
-        lastClick = now
-    elseif input.UserInputType == Enum.UserInputType.Touch then
-        local hold = tick()
-        local conn
-        conn = input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                if tick() - hold > 0.5 then
-                    settingsFrame.Visible = not settingsFrame.Visible
-                end
-                conn:Disconnect()
+                task.wait(0.1)
             end
         end)
+
+        MakeDraggable(Panel, Header)
+    end)
+end
+
+-- "OOF" Toggle Button
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 80, 0, 30)
+ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleBtn.Text = ""
+ToggleBtn.TextSize = 18
+ToggleBtn.Font = Enum.Font.Arcade
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+ToggleBtn.Parent = ScreenGui
+
+local BtnCorner = Instance.new("UICorner", ToggleBtn)
+BtnCorner.CornerRadius = UDim.new(0, 6)
+
+-- Matrix flicker "OOF"
+task.spawn(function()
+    local text = "OOF"
+    while true do
+        local display = ""
+        for i = 1, #text do
+            display = display .. string.char(math.random(33, 126))
+        end
+        ToggleBtn.Text = display
+        task.wait(0.05)
+        ToggleBtn.Text = text
+        task.wait(0.1)
     end
 end)
 
--- 💬 Injection Message
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Hostile Module",
-    Text = "Kill Aura injected",
-    Duration = 4
-})
-
+-- Toggle logic
+local Visible = true
+ToggleBtn.MouseButton1Click:Connect(function()
+    Visible = not Visible
+    Sidebar.Visible = Visible
+    for _, child in pairs(ScreenGui:GetChildren()) do
+        if child:IsA("Frame") and child.Name:find("Panel") then
+            child.Visible = Visible
+        end
+    end
+    Blur.Enabled = Visible
+    Tint.Enabled = Visible
+end)
