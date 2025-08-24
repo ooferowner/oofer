@@ -46,4 +46,97 @@ run(function()
         end
     })
 end)
+run(function()
+    -- Remote reference (nil-safe until ready)
+    local AttackRemote
+
+    -- Try to grab the BedWars attack remote
+    task.spawn(function()
+        repeat
+            task.wait()
+            pcall(function()
+                AttackRemote = bedwars and remotes and bedwars.Client:Get(remotes.AttackEntity).instance
+            end)
+        until AttackRemote and type(AttackRemote.FireServer) == "function"
+    end)
+
+    local mod = oofer.Categories.Render:CreateModule({ -- same category as Fullbright
+        Name = "Kill Aura",
+        Tooltip = "Automatically attacks nearby players using BedWars remote",
+        Function = function(state)
+            if state then
+                -- Start loop only when remote is ready
+                mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
+                    if not AttackRemote or type(AttackRemote.FireServer) ~= "function" then return end
+
+                    local lp = game:GetService("Players").LocalPlayer
+                    local char = lp.Character
+                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                    if not myRoot then return end
+
+                    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                        if player ~= lp and player.Character then
+                            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                            local hum = player.Character:FindFirstChild("Humanoid")
+                            if targetRoot and hum then
+                                local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                                if dist <= mod._range then
+                                    if mod._face then
+                                        myRoot.CFrame = CFrame.new(
+                                            myRoot.Position,
+                                            Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
+                                        )
+                                    end
+                                    -- Fire hostile BedWars attack payload
+                                    AttackRemote:FireServer({
+                                        weapon = getHeldItem and getHeldItem() or nil,
+                                        entityInstance = player.Character,
+                                        validate = {
+                                            raycast = {
+                                                cameraPosition = workspace.CurrentCamera.CFrame.Position,
+                                                cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
+                                            },
+                                            targetPosition = targetRoot.Position,
+                                            selfPosition = myRoot.Position
+                                        }
+                                    })
+                                end
+                            end
+                        end
+                    end
+                end)
+            else
+                if mod._loop then
+                    mod._loop:Disconnect()
+                    mod._loop = nil
+                end
+            end
+        end
+    })
+
+    -- Defaults
+    mod._range = 18
+    mod._face = true
+
+    -- Face Target toggle
+    mod:CreateToggle({
+        Name = "Face Target",
+        Default = true,
+        Function = function(enabled)
+            mod._face = enabled
+        end
+    })
+
+    -- Range slider
+    mod:CreateSlider({
+        Name = "Attack Range",
+        Min = 5,
+        Max = 25,
+        Default = 18,
+        Suffix = function(v) return " studs" end,
+        Function = function(val)
+            mod._range = val
+        end
+    })
+end)            
 
