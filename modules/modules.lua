@@ -47,10 +47,9 @@ run(function()
     })
 end)
 run(function()
-    -- Remote reference (nil-safe until ready)
     local AttackRemote
 
-    -- Try to grab the BedWars attack remote
+    -- Async grab of BedWars attack remote
     task.spawn(function()
         repeat
             task.wait()
@@ -65,47 +64,53 @@ run(function()
         Tooltip = "Automatically attacks nearby players using BedWars remote",
         Function = function(state)
             if state then
-                -- Start loop only when remote is ready
-                mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
-                    if not AttackRemote or type(AttackRemote.FireServer) ~= "function" then return end
+                -- Mark enabled immediately so GUI turns green
+                mod.Enabled = true
 
-                    local lp = game:GetService("Players").LocalPlayer
-                    local char = lp.Character
-                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                    if not myRoot then return end
+                -- Start loop once remote is ready
+                task.spawn(function()
+                    repeat task.wait() until AttackRemote and type(AttackRemote.FireServer) == "function"
+                    if not mod.Enabled then return end -- user turned it off while waiting
 
-                    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-                        if player ~= lp and player.Character then
-                            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                            local hum = player.Character:FindFirstChild("Humanoid")
-                            if targetRoot and hum then
-                                local dist = (targetRoot.Position - myRoot.Position).Magnitude
-                                if dist <= mod._range then
-                                    if mod._face then
-                                        myRoot.CFrame = CFrame.new(
-                                            myRoot.Position,
-                                            Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
-                                        )
+                    mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
+                        local lp = game:GetService("Players").LocalPlayer
+                        local char = lp.Character
+                        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                        if not myRoot then return end
+
+                        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                            if player ~= lp and player.Character then
+                                local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                                local hum = player.Character:FindFirstChild("Humanoid")
+                                if targetRoot and hum then
+                                    local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                                    if dist <= mod._range then
+                                        if mod._face then
+                                            myRoot.CFrame = CFrame.new(
+                                                myRoot.Position,
+                                                Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
+                                            )
+                                        end
+                                        AttackRemote:FireServer({
+                                            weapon = getHeldItem and getHeldItem() or nil,
+                                            entityInstance = player.Character,
+                                            validate = {
+                                                raycast = {
+                                                    cameraPosition = workspace.CurrentCamera.CFrame.Position,
+                                                    cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
+                                                },
+                                                targetPosition = targetRoot.Position,
+                                                selfPosition = myRoot.Position
+                                            }
+                                        })
                                     end
-                                    -- Fire hostile BedWars attack payload
-                                    AttackRemote:FireServer({
-                                        weapon = getHeldItem and getHeldItem() or nil,
-                                        entityInstance = player.Character,
-                                        validate = {
-                                            raycast = {
-                                                cameraPosition = workspace.CurrentCamera.CFrame.Position,
-                                                cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
-                                            },
-                                            targetPosition = targetRoot.Position,
-                                            selfPosition = myRoot.Position
-                                        }
-                                    })
                                 end
                             end
                         end
-                    end
+                    end)
                 end)
             else
+                mod.Enabled = false
                 if mod._loop then
                     mod._loop:Disconnect()
                     mod._loop = nil
@@ -138,5 +143,5 @@ run(function()
             mod._range = val
         end
     })
-end)            
+end)
 
