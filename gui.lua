@@ -381,7 +381,7 @@ local RepoName = "YOUR_REPO_NAME"
 local Branch = "main"
 local FilePath = "modules/modules.lua"
 
-local rawUrl = ("https://raw.githubusercontent.com/%s/%s/%s/%s"):format(
+local rawUrl = ("https://raw.githubusercontent.com/ooferowner/oofer/main/modules/modules.lua"):format(
     RepoUser, RepoName, Branch, FilePath
 )
 
