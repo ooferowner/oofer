@@ -47,26 +47,53 @@ run(function()
     })
 end)
 run(function()
+    -- Grab the BedWars attack remote exactly like your original hostile logic
+    local AttackRemote = {FireServer = function() end}
+    task.spawn(function()
+        AttackRemote = bedwars.Client:Get(remotes.AttackEntity).instance
+    end)
+
     local mod = oofer.Categories.Combat:CreateModule({
         Name = "Kill Aura",
-        Tooltip = "Automatically attacks nearby players within range",
+        Tooltip = "Automatically attacks nearby players using BedWars remote",
         Function = function(state)
             if state then
                 mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
                     local lp = game:GetService("Players").LocalPlayer
                     local char = lp.Character
-                    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                    if not myRoot or not AttackRemote then return end
 
+                    -- Scan all players for valid targets
                     for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-                        if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
-                            local targetRoot = player.Character.HumanoidRootPart
-                            local myRoot = char.HumanoidRootPart
-                            local distance = (targetRoot.Position - myRoot.Position).Magnitude
-                            if distance <= mod._range then
-                                if mod._face then
-                                    myRoot.CFrame = CFrame.new(myRoot.Position, Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z))
+                        if player ~= lp and player.Character then
+                            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                            local hum = player.Character:FindFirstChild("Humanoid")
+                            if targetRoot and hum then
+                                local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                                if dist <= mod._range then
+                                    -- Optional face target
+                                    if mod._face then
+                                        myRoot.CFrame = CFrame.new(
+                                            myRoot.Position,
+                                            Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
+                                        )
+                                    end
+
+                                    -- Fire the BedWars attack remote with hostile payload
+                                    AttackRemote:FireServer({
+                                        weapon = getHeldItem(), -- your original helper to get current sword/tool
+                                        entityInstance = player.Character,
+                                        validate = {
+                                            raycast = {
+                                                cameraPosition = workspace.CurrentCamera.CFrame.Position,
+                                                cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
+                                            },
+                                            targetPosition = targetRoot.Position,
+                                            selfPosition = myRoot.Position
+                                        }
+                                    })
                                 end
-                                player.Character.Humanoid:TakeDamage(mod._damage)
                             end
                         end
                     end
@@ -80,10 +107,11 @@ run(function()
         end
     })
 
+    -- Default settings
     mod._range = 18
-    mod._damage = 5
     mod._face = true
 
+    -- GUI controls
     mod:CreateToggle({
         Name = "Face Target",
         Default = true,
@@ -102,18 +130,4 @@ run(function()
             mod._range = val
         end
     })
-
-    mod:CreateSlider({
-        Name = "Damage",
-        Min = 1,
-        Max = 20,
-        Default = 5,
-        Suffix = function(v) return " HP" end,
-        Function = function(val)
-            mod._damage = val
-        end
-    })
 end)
-            
-
-  
