@@ -94,8 +94,8 @@ local Categories = {
     {name = "Targets",   id = "rbxassetid://3926307971", offset = Vector2.new(148, 4)},
 }
 
--- Module API
-local oofer = { Categories = {} }
+-- Module API (GLOBAL oofer so modules can see it)
+oofer = { Categories = {} }
 for _, cat in ipairs(Categories) do
     oofer.Categories[cat.name] = {
         Modules = {},
@@ -214,7 +214,12 @@ for i, cat in ipairs(Categories) do
         local Panel = Instance.new("Frame")
         Panel.Name = cat.name .. "Panel"
         Panel.Size = UDim2.new(0, 200, 0, 400)
-        Panel.Position = Sidebar.Position + UDim2.new(0, PanelXOffset * i, 0         , 0)
+        Panel.Position = UDim2.new(
+            Sidebar.Position.X.Scale,
+            Sidebar.Position.X.Offset + PanelXOffset * i,
+            Sidebar.Position.Y.Scale,
+            Sidebar.Position.Y.Offset
+        )
         Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         Panel.BackgroundTransparency = 0.2
         Panel.BorderSizePixel = 0
@@ -375,18 +380,16 @@ ToggleBtn.MouseButton1Click:Connect(function()
     Tint.Enabled = Visible
 end)
 
--- Single-file GitHub loader
-local RepoUser = "YOUR_GITHUB_USERNAME"
-local RepoName = "YOUR_REPO_NAME"
-local Branch = "main"
-local FilePath = "modules/modules.lua"
+-- GLOBAL run helper so modules.lua can call run(function() ... end)
+function run(func)
+    task.spawn(func)
+end
 
-local rawUrl = ("https://raw.githubusercontent.com/ooferowner/oofer/main/modules/modules.lua"):format(
-    RepoUser, RepoName, Branch, FilePath
-)
+-- Single-file GitHub loader (loads after GUI+run exist)
+local rawUrl = "https://raw.githubusercontent.com/ooferowner/oofer/main/modules/modules.lua"
 
 local ok, err = pcall(function()
-    loadstring(game:HttpGet(rawUrl))()
+    loadstring(game:HttpGet(rawUrl, true))()
 end)
 
 if not ok then
