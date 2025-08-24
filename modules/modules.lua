@@ -113,3 +113,82 @@ run(function()
         end
     })
 end)            
+run(function()
+    local mod = oofer.Categories.Combat:CreateModule({
+        Name = "AutoClicker",
+        Tooltip = "Hold attack button to automatically click",
+        Function = function(state)
+            local RS = game:GetService("RunService")
+            local UIS = game:GetService("UserInputService")
+            local LP = game.Players.LocalPlayer
+            local HRP = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+
+            if state then
+                mod._running = true
+                mod._conn = UIS.InputBegan:Connect(function(input, gp)
+                    if gp then return end
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        mod._clickLoop = RS.RenderStepped:Connect(function()
+                            if not mod._running then return end
+                            if mod._blockMode then
+                                -- Simulate block placement
+                                -- Replace with your hostile block placement logic
+                            else
+                                -- Simulate sword swing
+                                -- Replace with your hostile sword swing logic
+                            end
+                            task.wait(1 / (mod._blockMode and mod._blockCPS or mod._cps))
+                        end)
+                    end
+                end)
+                mod._endConn = UIS.InputEnded:Connect(function(input, gp)
+                    if gp then return end
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        if mod._clickLoop then
+                            mod._clickLoop:Disconnect()
+                            mod._clickLoop = nil
+                        end
+                    end
+                end)
+            else
+                mod._running = false
+                if mod._clickLoop then mod._clickLoop:Disconnect() mod._clickLoop = nil end
+                if mod._conn then mod._conn:Disconnect() mod._conn = nil end
+                if mod._endConn then mod._endConn:Disconnect() mod._endConn = nil end
+            end
+        end
+    })
+
+    -- CPS slider
+    mod:CreateSlider({
+        Name = "CPS",
+        Min = 1,
+        Max = 20,
+        Default = 12,
+        Suffix = function(v) return "" end,
+        Function = function(value)
+            mod._cps = value
+        end
+    })
+
+    -- Place Blocks toggle
+    mod:CreateToggle({
+        Name = "Place Blocks",
+        Default = true,
+        Function = function(enabled)
+            mod._blockMode = enabled
+        end
+    })
+
+    -- Block CPS slider
+    mod:CreateSlider({
+        Name = "Block CPS",
+        Min = 1,
+        Max = 20,
+        Default = 12,
+        Suffix = function(v) return "" end,
+        Function = function(value)
+            mod._blockCPS = value
+        end
+    })
+end)
