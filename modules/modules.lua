@@ -49,7 +49,7 @@ end)
 run(function()
     local mod = oofer.Categories.Blatant:CreateModule({
         Name = "Fly",
-        Tooltip = "Lets you fly around the map",
+        Tooltip = "Lets you fly using WASD + Space/Ctrl",
         Function = function(state)
             local RS = game:GetService("RunService")
             local UIS = game:GetService("UserInputService")
@@ -62,13 +62,13 @@ run(function()
                     if not mod._flying or not HRP then return end
                     local cam = workspace.CurrentCamera
                     local moveDir = Vector3.new()
-                    if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
-                    if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
-                    if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
-                    if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
-                    if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
-                    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0,1,0) end
-                    HRP.Velocity = moveDir.Unit * (mod._speed or 50)
+                    if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0,1,0) end
+                    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0,1,0) end
+                    HRP.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * (mod._speed or 50) or Vector3.zero
                 end)
             else
                 mod._flying = false
@@ -90,7 +90,7 @@ run(function()
         end
     })
 
-    -- Toggle for noclip while flying
+    -- Noclip toggle
     mod:CreateToggle({
         Name = "Noclip",
         Default = true,
@@ -112,4 +112,4 @@ run(function()
             end
         end
     })
-end)
+end)            
