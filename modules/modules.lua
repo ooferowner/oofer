@@ -47,6 +47,7 @@ run(function()
     })
 end)
 run(function()
+    -- Remote reference (safe until ready)
     local AttackRemote
 
     -- Async grab of BedWars attack remote
@@ -59,58 +60,54 @@ run(function()
         until AttackRemote and type(AttackRemote.FireServer) == "function"
     end)
 
-    local mod = oofer.Categories.Render:CreateModule({ -- same category as Fullbright
+    -- Main module (same structure as Fullbright)
+    local mod = oofer.Categories.Render:CreateModule({
         Name = "Kill Aura",
         Tooltip = "Automatically attacks nearby players using BedWars remote",
         Function = function(state)
             if state then
-                -- Mark enabled immediately so GUI turns green
-                mod.Enabled = true
+                -- Start attack loop
+                mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
+                    if not AttackRemote or type(AttackRemote.FireServer) ~= "function" then return end
 
-                -- Start loop once remote is ready
-                task.spawn(function()
-                    repeat task.wait() until AttackRemote and type(AttackRemote.FireServer) == "function"
-                    if not mod.Enabled then return end -- user turned it off while waiting
+                    local lp = game:GetService("Players").LocalPlayer
+                    local char = lp.Character
+                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+                    if not myRoot then return end
 
-                    mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
-                        local lp = game:GetService("Players").LocalPlayer
-                        local char = lp.Character
-                        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                        if not myRoot then return end
-
-                        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-                            if player ~= lp and player.Character then
-                                local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                                local hum = player.Character:FindFirstChild("Humanoid")
-                                if targetRoot and hum then
-                                    local dist = (targetRoot.Position - myRoot.Position).Magnitude
-                                    if dist <= mod._range then
-                                        if mod._face then
-                                            myRoot.CFrame = CFrame.new(
-                                                myRoot.Position,
-                                                Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
-                                            )
-                                        end
-                                        AttackRemote:FireServer({
-                                            weapon = getHeldItem and getHeldItem() or nil,
-                                            entityInstance = player.Character,
-                                            validate = {
-                                                raycast = {
-                                                    cameraPosition = workspace.CurrentCamera.CFrame.Position,
-                                                    cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
-                                                },
-                                                targetPosition = targetRoot.Position,
-                                                selfPosition = myRoot.Position
-                                            }
-                                        })
+                    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                        if player ~= lp and player.Character then
+                            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+                            local hum = player.Character:FindFirstChild("Humanoid")
+                            if targetRoot and hum then
+                                local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                                if dist <= mod._range then
+                                    if mod._face then
+                                        myRoot.CFrame = CFrame.new(
+                                            myRoot.Position,
+                                            Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
+                                        )
                                     end
+                                    -- Fire hostile BedWars attack payload
+                                    AttackRemote:FireServer({
+                                        weapon = getHeldItem and getHeldItem() or nil,
+                                        entityInstance = player.Character,
+                                        validate = {
+                                            raycast = {
+                                                cameraPosition = workspace.CurrentCamera.CFrame.Position,
+                                                cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
+                                            },
+                                            targetPosition = targetRoot.Position,
+                                            selfPosition = myRoot.Position
+                                        }
+                                    })
                                 end
                             end
                         end
-                    end)
+                    end
                 end)
             else
-                mod.Enabled = false
+                -- Stop attack loop
                 if mod._loop then
                     mod._loop:Disconnect()
                     mod._loop = nil
@@ -123,7 +120,7 @@ run(function()
     mod._range = 18
     mod._face = true
 
-    -- Face Target toggle
+    -- Face Target toggle (like Lock Time in Fullbright)
     mod:CreateToggle({
         Name = "Face Target",
         Default = true,
@@ -132,7 +129,7 @@ run(function()
         end
     })
 
-    -- Range slider
+    -- Attack Range slider (like Brightness in Fullbright)
     mod:CreateSlider({
         Name = "Attack Range",
         Min = 5,
@@ -144,4 +141,3 @@ run(function()
         end
     })
 end)
-
