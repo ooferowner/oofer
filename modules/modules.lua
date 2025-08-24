@@ -47,97 +47,137 @@ run(function()
     })
 end)
 run(function()
-    -- Remote reference (safe until ready)
-    local AttackRemote
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local LocalPlayer = Players.LocalPlayer
 
-    -- Async grab of BedWars attack remote
-    task.spawn(function()
-        repeat
-            task.wait()
-            pcall(function()
-                AttackRemote = bedwars and remotes and bedwars.Client:Get(remotes.AttackEntity).instance
-            end)
-        until AttackRemote and type(AttackRemote.FireServer) == "function"
-    end)
-
-    -- Main module (same structure as Fullbright)
     local mod = oofer.Categories.Render:CreateModule({
-        Name = "Kill Aura",
-        Tooltip = "Automatically attacks nearby players using BedWars remote",
+        Name = "Fly",
+        Tooltip = "WASD + Space/LeftCtrl flight. Noclip optional.",
         Function = function(state)
             if state then
-                -- Start attack loop
-                mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
-                    if not AttackRemote or type(AttackRemote.FireServer) ~= "function" then return end
+                -- start fly loop
+                mod._loop = RunService.Heartbeat:Connect(function()
+                    local char = LocalPlayer.Character
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    local cam = workspace.CurrentCamera
+                    if not (char and root and hum and cam) then return end
 
-                    local lp = game:GetService("Players").LocalPlayer
-                    local char = lp.Character
-                    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-                    if not myRoot then return end
+                    hum:ChangeState(Enum.HumanoidStateType.Freefall)
 
-                    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-                        if player ~= lp and player.Character then
-                            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                            local hum = player.Character:FindFirstChild("Humanoid")
-                            if targetRoot and hum then
-                                local dist = (targetRoot.Position - myRoot.Position).Magnitude
-                                if dist <= mod._range then
-                                    if mod._face then
-                                        myRoot.CFrame = CFrame.new(
-                                            myRoot.Position,
-                                            Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z)
-                                        )
-                                    end
-                                    -- Fire hostile BedWars attack payload
-                                    AttackRemote:FireServer({
-                                        weapon = getHeldItem and getHeldItem() or nil,
-                                        entityInstance = player.Character,
-                                        validate = {
-                                            raycast = {
-                                                cameraPosition = workspace.CurrentCamera.CFrame.Position,
-                                                cursorDirection = (targetRoot.Position - workspace.CurrentCamera.CFrame.Position).Unit
-                                            },
-                                            targetPosition = targetRoot.Position,
-                                            selfPosition = myRoot.Position
-                                        }
-                                    })
-                                end
+                    local look = cam.CFrame.LookVector
+                    local right = cam.CFrame.RightVector
+
+                    local dir = Vector3.zero
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += look end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= look end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += right end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= right end
+                    dir = Vector3.new(dir.X, 0, dir.Z)
+                    if dir.Magnitude > 0 then dir = dir.Unit end
+
+                    local up = 0
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then up += 1 end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then up -= 1 end
+
+                    local vel = (dir * mod._speed) + Vector3.new(0, up * mod._vSpeed, 0)
+                    local currentY = root.AssemblyLinearVelocity.Y
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, mod._hover and vel.Y or currentY, vel.Z)
+                end)
+
+                if mod._noclip then
+                    mod._noclipConn = RunService.Stepped:Connect(function()
+                        local char = LocalPlayer.Character
+                        if not char then return end
+                        for _, part in ipairs(char:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = false
                             end
                         end
-                    end
-                end)
+                    end)
+                end
             else
-                -- Stop attack loop
-                if mod._loop then
-                    mod._loop:Disconnect()
-                    mod._loop = nil
+                -- stop fly loop
+                if mod._loop then mod._loop:Disconnect() mod._loop = nil end
+                if mod._noclipConn then mod._noclipConn:Disconnect() mod._noclipConn = nil end
+
+                local char = LocalPlayer.Character
+                if char then
+                    for _, part in ipairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                        end
+                    end
+                    local root = char:FindFirstChild("HumanoidRootPart")
+                    if root then root.AssemblyLinearVelocity = Vector3.new(0, 0, 0) end
                 end
             end
         end
     })
 
-    -- Defaults
-    mod._range = 18
-    mod._face = true
+    -- defaults
+    mod._speed = 60
+    mod._vSpeed = 60
+    mod._noclip = true
+    mod._hover = true
 
-    -- Face Target toggle (like Lock Time in Fullbright)
+    -- controls
     mod:CreateToggle({
-        Name = "Face Target",
+        Name = "Noclip",
         Default = true,
         Function = function(enabled)
-            mod._face = enabled
+            mod._noclip = enabled
+            if not mod.Enabled then return end
+            if enabled and not mod._noclipConn then
+                mod._noclipConn = RunService.Stepped:Connect(function()
+                    local char = LocalPlayer.Character
+                    if not char then return end
+                    for _, part in ipairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = false end
+                    end
+                end)
+            elseif not enabled and mod._noclipConn then
+                mod._noclipConn:Disconnect()
+                mod._noclipConn = nil
+                local char = LocalPlayer.Character
+                if char then
+                    for _, part in ipairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = true end
+                    end
+                end
+            end
         end
     })
 
-    -- Attack Range slider (like Brightness in Fullbright)
+    mod:CreateToggle({
+        Name = "Hover",
+        Default = true,
+        Function = function(enabled)
+            mod._hover = enabled
+        end
+    })
+
     mod:CreateSlider({
-        Name = "Attack Range",
-        Min = 5,
-        Max = 25,
-        Default = 18,
-        Suffix = function(v) return " studs" end,
+        Name = "Speed",
+        Min = 10,
+        Max = 200,
+        Default = 60,
+        Suffix = function(v) return " studs/s" end,
         Function = function(val)
-            mod._range = val
+            mod._speed = val
+        end
+    })
+
+    mod:CreateSlider({
+        Name = "Vertical Speed",
+        Min = 10,
+        Max = 200,
+        Default = 60,
+        Suffix = function(v) return " studs/s" end,
+        Function = function(val)
+            mod._vSpeed = val
         end
     })
 end)
