@@ -1082,4 +1082,50 @@ run(function()
 		end
 	end))
 end)
-	
+run(function()
+    local ThisIsATest = {}
+    local ThisIsATestSlider
+    local ThisIsATestMiniToggle
+
+    -- Register the module in World category
+    ThisIsATest = oofer.Categories.World:CreateModule({
+        Name = 'Testing',
+        Function = function(callback)
+            if callback then
+                print("Module enabled")
+                print("Slider value:", ThisIsATestSlider.Value)
+                print("Mini toggle:", ThisIsATestMiniToggle.Enabled)
+            else
+                print("Module disabled")
+            end
+        end,
+        Tooltip = 'This is a test -- ignore ts module gng',
+        ExtraText = function()
+            return 'Test #1'
+        end
+    })
+
+    -- Slider inside module settings
+    ThisIsATestSlider = ThisIsATest:CreateSlider({
+        Name = 'Value',
+        Min = 1,
+        Max = 99,
+        Default = 50,
+        Suffix = function(val)
+            return val == 1 and 'stud' or 'studs'
+        end,
+        Function = function(val)
+            print("Slider changed to", val)
+        end,
+        Tooltip = 'Testing!!'
+    })
+
+    -- Mini toggle inside module settings
+    ThisIsATestMiniToggle = ThisIsATest:CreateToggle({
+        Name = 'Toggle',
+        Function = function(val)
+            print("Mini toggle:", val)
+        end,
+        Tooltip = 'Bla bla'
+    })
+end)	
