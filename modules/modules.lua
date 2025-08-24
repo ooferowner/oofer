@@ -1,54 +1,48 @@
 run(function()
     local mod = oofer.Categories.Render:CreateModule({
-        Name = "ESP",
-        Tooltip = "Highlights players through walls",
+        Name = "Fullbright",
+        Tooltip = "Forces maximum brightness in all environments",
         Function = function(state)
             if state then
-                -- Enable ESP
-                for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
-                    if plr ~= game.Players.LocalPlayer and plr.Character then
-                        for _, part in ipairs(plr.Character:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                local highlight = Instance.new("Highlight")
-                                highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                                highlight.Parent = part
-                            end
-                        end
-                    end
-                end
+                game:GetService("Lighting").Brightness = 2
+                game:GetService("Lighting").ClockTime = 14
+                game:GetService("Lighting").FogEnd = 1e6
             else
-                -- Disable ESP
-                for _, highlight in ipairs(game:GetDescendants()) do
-                    if highlight:IsA("Highlight") then
-                        highlight:Destroy()
-                    end
+                -- Reset to default Roblox lighting
+                game:GetService("Lighting").Brightness = 1
+                game:GetService("Lighting").ClockTime = 12
+                game:GetService("Lighting").FogEnd = 1000
+            end
+        end
+    })
+
+    -- Toggle to keep Fullbright locked on
+    mod:CreateToggle({
+        Name = "Lock Time",
+        Default = true,
+        Function = function(enabled)
+            if enabled then
+                mod._timeLoop = game:GetService("RunService").RenderStepped:Connect(function()
+                    game:GetService("Lighting").ClockTime = 14
+                end)
+            else
+                if mod._timeLoop then
+                    mod._timeLoop:Disconnect()
+                    mod._timeLoop = nil
                 end
             end
         end
     })
 
-    -- Keybind row in settings
-    mod:SetKeybind(Enum.KeyCode.E)
-
-    -- Example toggle
-    mod:CreateToggle({
-        Name = "Show Team",
-        Default = false,
-        Function = function(enabled)
-            -- Logic for showing teammates if needed
-        end
-    })
-
-    -- Example slider
+    -- Slider to adjust brightness
     mod:CreateSlider({
-        Name = "Max Distance",
-        Min = 50,
-        Max = 1000,
-        Default = 500,
-        Suffix = function(v) return " studs" end,
+        Name = "Brightness",
+        Min = 1,
+        Max = 5,
+        Default = 2,
+        Suffix = function(v) return "" end,
         Function = function(value)
-            -- Adjust ESP range logic
+            game:GetService("Lighting").Brightness = value
         end
     })
 end)
