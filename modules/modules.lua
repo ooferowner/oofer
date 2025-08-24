@@ -48,76 +48,69 @@ run(function()
 end)
 run(function()
     local mod = oofer.Categories.Combat:CreateModule({
-        Name = "AutoClicker",
-        Tooltip = "Hold attack button to automatically click",
+        Name = "Kill Aura",
+        Tooltip = "Automatically attacks nearby players within range",
         Function = function(state)
-            local RS = game:GetService("RunService")
-            local UIS = game:GetService("UserInputService")
-
             if state then
-                mod._running = true
-                mod._conn = UIS.InputBegan:Connect(function(input, gp)
-                    if gp then return end
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        mod._clickLoop = RS.RenderStepped:Connect(function()
-                            if not mod._running then return end
-                            if mod._blockMode then
-                                -- hostile block placement logic here
-                            else
-                                -- hostile sword swing logic here
+                mod._loop = game:GetService("RunService").Heartbeat:Connect(function()
+                    local lp = game:GetService("Players").LocalPlayer
+                    local char = lp.Character
+                    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+                    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+                        if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+                            local targetRoot = player.Character.HumanoidRootPart
+                            local myRoot = char.HumanoidRootPart
+                            local distance = (targetRoot.Position - myRoot.Position).Magnitude
+                            if distance <= mod._range then
+                                if mod._face then
+                                    myRoot.CFrame = CFrame.new(myRoot.Position, Vector3.new(targetRoot.Position.X, myRoot.Position.Y, targetRoot.Position.Z))
+                                end
+                                player.Character.Humanoid:TakeDamage(mod._damage)
                             end
-                            task.wait(1 / (mod._blockMode and mod._blockCPS or mod._cps))
-                        end)
-                    end
-                end)
-                mod._endConn = UIS.InputEnded:Connect(function(input, gp)
-                    if gp then return end
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        if mod._clickLoop then
-                            mod._clickLoop:Disconnect()
-                            mod._clickLoop = nil
                         end
                     end
                 end)
             else
-                mod._running = false
-                if mod._clickLoop then mod._clickLoop:Disconnect() mod._clickLoop = nil end
-                if mod._conn then mod._conn:Disconnect() mod._conn = nil end
-                if mod._endConn then mod._endConn:Disconnect() mod._endConn = nil end
+                if mod._loop then
+                    mod._loop:Disconnect()
+                    mod._loop = nil
+                end
             end
         end
     })
 
-    -- CPS slider (click/drag to change)
-    mod:CreateSlider({
-        Name = "CPS",
-        Min = 1,
-        Max = 20,
-        Default = 12,
-        Suffix = function(v) return "" end,
-        Function = function(value)
-            mod._cps = value
-        end
-    })
+    mod._range = 18
+    mod._damage = 5
+    mod._face = true
 
-    -- Place Blocks toggle (click to change)
     mod:CreateToggle({
-        Name = "Place Blocks",
+        Name = "Face Target",
         Default = true,
         Function = function(enabled)
-            mod._blockMode = enabled
+            mod._face = enabled
         end
     })
 
-    -- Block CPS slider (click/drag to change)
     mod:CreateSlider({
-        Name = "Block CPS",
+        Name = "Attack Range",
+        Min = 5,
+        Max = 25,
+        Default = 18,
+        Suffix = function(v) return " studs" end,
+        Function = function(val)
+            mod._range = val
+        end
+    })
+
+    mod:CreateSlider({
+        Name = "Damage",
         Min = 1,
         Max = 20,
-        Default = 12,
-        Suffix = function(v) return "" end,
-        Function = function(value)
-            mod._blockCPS = value
+        Default = 5,
+        Suffix = function(v) return " HP" end,
+        Function = function(val)
+            mod._damage = val
         end
     })
 end)
