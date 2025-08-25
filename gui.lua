@@ -1,8 +1,6 @@
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 
 -- Blur + Tint
 local Blur = Instance.new("BlurEffect")
@@ -47,8 +45,8 @@ task.spawn(function()
     local text = "OOFER"
     while true do
         local display = ""
-        for i = 1, #text do
-            display = display .. string.char(math.random(33, 126))
+        for _ = 1, #text do
+            display ..= string.char(math.random(33, 126))
         end
         Title.Text = display
         task.wait(0.05)
@@ -60,14 +58,13 @@ end)
 task.spawn(function()
     while true do
         local t = tick() * 0.5
-        local r = math.sin(t) * 127 + 128
-        local g = math.sin(t + 2) * 127 + 128
-        local b = math.sin(t + 4) * 127 + 128
+        local r = math.clamp(math.floor(math.sin(t) * 127 + 128), 0, 255)
+        local g = math.clamp(math.floor(math.sin(t + 2) * 127 + 128), 0, 255)
+        local b = math.clamp(math.floor(math.sin(t + 4) * 127 + 128), 0, 255)
         Title.TextColor3 = Color3.fromRGB(r, g, b)
         for _, panel in pairs(ScreenGui:GetChildren()) do
-            if panel:FindFirstChild("Header") then
-                panel.Header.TextColor3 = Color3.fromRGB(r, g, b)
-            end
+            local header = panel:FindFirstChild("Header")
+            if header then header.TextColor3 = Color3.fromRGB(r, g, b) end
         end
         task.wait(0.05)
     end
@@ -84,96 +81,281 @@ layout.Padding = UDim.new(0, 4)
 
 -- Categories
 local Categories = {
-    {name = "Combat",    id = "rbxassetid://3926305904", offset = Vector2.new(4, 4)},
-    {name = "Blatant",   id = "rbxassetid://3926305904", offset = Vector2.new(76, 4)},
-    {name = "Render",    id = "rbxassetid://3926305904", offset = Vector2.new(112, 4)},
-    {name = "Utility",   id = "rbxassetid://3926305904", offset = Vector2.new(184, 4)},
-    {name = "World",     id = "rbxassetid://3926305904", offset = Vector2.new(220, 4)},
-    {name = "Friends",   id = "rbxassetid://3926307971", offset = Vector2.new(184, 4)},
-    {name = "Profiles",  id = "rbxassetid://3926307971", offset = Vector2.new(292, 4)},
-    {name = "Targets",   id = "rbxassetid://3926307971", offset = Vector2.new(148, 4)},
+    {name = "Combat",   id = "rbxassetid://3926305904", offset = Vector2.new(4, 4)},
+    {name = "Blatant",  id = "rbxassetid://3926305904", offset = Vector2.new(76, 4)},
+    {name = "Render",   id = "rbxassetid://3926305904", offset = Vector2.new(112, 4)},
+    {name = "Utility",  id = "rbxassetid://3926305904", offset = Vector2.new(184, 4)},
+    {name = "World",    id = "rbxassetid://3926305904", offset = Vector2.new(220, 4)},
+    {name = "Friends",  id = "rbxassetid://3926307971", offset = Vector2.new(184, 4)},
+    {name = "Profiles", id = "rbxassetid://3926307971", offset = Vector2.new(292, 4)},
+    {name = "Targets",  id = "rbxassetid://3926307971", offset = Vector2.new(148, 4)},
 }
 
--- Module API (GLOBAL oofer so modules can see it)
-oofer = { Categories = {} }
-for _, cat in ipairs(Categories) do
-    oofer.Categories[cat.name] = {
-        Modules = {},
-        CreateModule = function(self, data)
-            local mod = {
-                Name = data.Name,
-                Tooltip = data.Tooltip or "",
-                ExtraText = data.ExtraText or function() return "" end,
-                Enabled = false,
-                Function = data.Function or function() end,
-                Sliders = {},
-                Toggles = {}
-            }
-            function mod:CreateSlider(opts)
-                local slider = {
-                    Name = opts.Name,
-                    Min = opts.Min or 0,
-                    Max = opts.Max or 100,
-                    Value = opts.Default or 0,
-                    Suffix = opts.Suffix or function(v) return tostring(v) end,
-                    Function = opts.Function or function() end,
-                    Tooltip = opts.Tooltip or ""
-                }
-                table.insert(self.Sliders, slider)
-                return slider
-            end
-            function mod:CreateToggle(opts)
-                local toggle = {
-                    Name = opts.Name,
-                    Enabled = opts.Default or false,
-                    Function = opts.Function or function() end,
-                    Tooltip = opts.Tooltip or ""
-                }
-                table.insert(self.Toggles, toggle)
-                return toggle
-            end
-            table.insert(self.Modules, mod)
-            return mod
-        end
-    }
+-- API
+oofer = { Categories = {}, Connections = {}, _Panels = {}, _PanelContent = {} }
+shared.oofer = oofer
+vape = oofer -- alias for compatibility
+oofer.gui = ScreenGui
+
+function oofer:Clean(connOrFunc)
+    if connOrFunc == nil then return end
+    table.insert(self.Connections, connOrFunc)
 end
 
--- Draggable
-local function MakeDraggable(frame, dragHandle)
+function oofer:CreateNotification(title, text, duration, kind)
+    print(("[oofer][%s][%s] %s"):format(kind or "info", tostring(title), tostring(text)))
+end
+
+-- Friends / Targets scaffolding for core
+oofer.Categories.Friends = oofer.Categories.Friends or { Modules = {}, Options = {}, ListEnabled = {} }
+oofer.Categories.Friends.Options["Use friends"] = oofer.Categories.Friends.Options["Use friends"] or { Enabled = false }
+oofer.Categories.Friends.Options["Recolor visuals"] = oofer.Categories.Friends.Options["Recolor visuals"] or { Enabled = false }
+oofer.Categories.Targets = oofer.Categories.Targets or { Modules = {}, Options = {}, ListEnabled = {} }
+
+-- Internal: attach visible proxy to a node
+local function attachVisibilityProxy(node)
+    local proxy = { Visible = true }
+    return setmetatable(proxy, {
+        __newindex = function(t, k, v)
+            rawset(t, k, v)
+            if k == "Visible" and node then node.Visible = v end
+        end
+    })
+end
+
+-- Internal: create a module row in a panel
+local function renderModuleRow(content, mod)
+    -- Module button
+    local ModBtn = Instance.new("TextButton")
+    ModBtn.Size = UDim2.new(1, -8, 0, 30)
+    ModBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    ModBtn.Text = mod.Name
+    ModBtn.Font = Enum.Font.Arcade
+    ModBtn.TextSize = 16
+    ModBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ModBtn.AutoButtonColor = false
+    ModBtn.Parent = content
+    Instance.new("UICorner", ModBtn).CornerRadius = UDim.new(0, 6)
+
+    -- ExtraText label (right side)
+    local Extra = Instance.new("TextLabel")
+    Extra.BackgroundTransparency = 1
+    Extra.AnchorPoint = Vector2.new(1, 0.5)
+    Extra.Position = UDim2.new(1, -10, 0.5, 0)
+    Extra.Size = UDim2.new(0, 120, 1, 0)
+    Extra.TextXAlignment = Enum.TextXAlignment.Right
+    Extra.Font = Enum.Font.Arcade
+    Extra.TextSize = 14
+    Extra.TextColor3 = Color3.fromRGB(170, 170, 170)
+    Extra.Parent = ModBtn
+
+    task.spawn(function()
+        while ModBtn.Parent do
+            local ok, txt = pcall(mod.ExtraText)
+            Extra.Text = ok and tostring(txt) or ""
+            task.wait(0.2)
+        end
+    end)
+
+    ModBtn.MouseButton1Click:Connect(function()
+        mod.Enabled = not mod.Enabled
+        local ok, err = pcall(mod.Function, mod.Enabled)
+        if not ok then warn("[oofer] Module error:", mod.Name, err) end
+        ModBtn.TextColor3 = mod.Enabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
+    end)
+
+    mod._node = ModBtn
+
+    -- Render sliders
+    for _, slider in ipairs(mod.Sliders) do
+        local Box = Instance.new("TextBox")
+        Box.Size = UDim2.new(1, -10, 0, 30)
+        Box.Text = ("%s: %s %s"):format(slider.Name, slider.Value, slider.Suffix(slider.Value))
+        Box.TextColor3 = Color3.fromRGB(255,255,255)
+        Box.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        Box.ClearTextOnFocus = false
+        Box.Font = Enum.Font.Arcade
+        Box.TextSize = 16
+        Box.Parent = content
+        Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 4)
+
+        slider.Object = attachVisibilityProxy(Box)
+
+        Box.FocusLost:Connect(function()
+            local num = tonumber(Box.Text:match("[%d%.]+"))
+            if not num then
+                Box.Text = ("%s: %s %s"):format(slider.Name, slider.Value, slider.Suffix(slider.Value))
+                return
+            end
+            local clamped = math.clamp(num, slider.Min, slider.Max)
+            slider.Value = clamped
+            local ok, err = pcall(slider.Function, clamped)
+            if not ok then warn("[oofer] Slider error:", slider.Name, err) end
+            Box.Text = ("%s: %s %s"):format(slider.Name, clamped, slider.Suffix(clamped))
+        end)
+    end
+
+    -- Render mini toggles
+    for _, toggle in ipairs(mod.Toggles) do
+        local TBtn = Instance.new("TextButton")
+        TBtn.Size = UDim2.new(1, -8, 0, 30)
+        TBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        TBtn.Text = toggle.Name
+        TBtn.Font = Enum.Font.Arcade
+        TBtn.TextSize = 16
+        TBtn.TextColor3 = toggle.Enabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
+        TBtn.AutoButtonColor = false
+        TBtn.Parent = content
+        Instance.new("UICorner", TBtn).CornerRadius = UDim.new(0, 6)
+
+        toggle.Object = attachVisibilityProxy(TBtn)
+
+        TBtn.MouseButton1Click:Connect(function()
+            toggle.Enabled = not toggle.Enabled
+            local ok, err = pcall(toggle.Function, toggle.Enabled)
+            if not ok then warn("[oofer] Toggle error:", toggle.Name, err) end
+            TBtn.TextColor3 = toggle.Enabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
+        end)
+    end
+end
+
+-- Create panels on-demand and remember content containers
+local function ensurePanel(catName, iIndex)
+    local name = catName .. "Panel"
+    if oofer._Panels[name] then return oofer._Panels[name], oofer._PanelContent[name] end
+
+    local Panel = Instance.new("Frame")
+    Panel.Name = name
+    Panel.Size = UDim2.new(0, 200, 0, 400)
+    Panel.Position = UDim2.new(0, Sidebar.Position.X.Offset + (230 * (iIndex or 1)), Sidebar.Position.Y.Scale, Sidebar.Position.Y.Offset)
+    Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    Panel.BackgroundTransparency = 0.2
+    Panel.BorderSizePixel = 0
+    Panel.Parent = ScreenGui
+    Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 6)
+
+    local Header = Instance.new("TextLabel")
+    Header.Name = "Header"
+    Header.Size = UDim2.new(1, 0, 0, 30)
+    Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Header.Text = catName
+    Header.Font = Enum.Font.Arcade
+    Header.TextSize = 18
+    Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Header.BorderSizePixel = 0
+    Header.Parent = Panel
+
+    local Content = Instance.new("ScrollingFrame", Panel)
+    Content.Size = UDim2.new(1, 0, 1, -30)
+    Content.Position = UDim2.new(0, 0, 0, 30)
+    Content.BackgroundTransparency = 1
+    Content.ScrollBarThickness = 4
+    local UIList = Instance.new("UIListLayout", Content)
+    UIList.SortOrder = Enum.SortOrder.LayoutOrder
+    UIList.Padding = UDim.new(0, 4)
+
+    -- Draggable via header
     local dragging, dragInput, dragStart, startPos
-    local UserInputService = game:GetService("UserInputService")
+    local UIS = game:GetService("UserInputService")
     local function update(input)
         local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        Panel.Position = UDim2.new(Panel.Position.X.Scale, Panel.Position.X.Offset + delta.X, Panel.Position.Y.Scale, Panel.Position.Y.Offset + delta.Y)
     end
-    dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    Header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
-            startPos = frame.Position
+            startPos = Panel.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
     end)
-    dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
+    Header.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
     end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then update(input) end
     end)
-end
-MakeDraggable(Sidebar, Title)
 
--- Category buttons
-local PanelXOffset = 230
-for i, cat in ipairs(Categories) do
+    -- Save references
+    oofer._Panels[name] = Panel
+    oofer._PanelContent[name] = Content
+
+    return Panel, Content
+end
+
+-- Public category registration + CreateButton/CreateModule
+for idx, cat in ipairs(Categories) do
+    local catName = cat.name
+    oofer.Categories[catName] = oofer.Categories[catName] or { Modules = {} }
+
+    local function createModule(self, data)
+        local mod = {
+            Name = data.Name,
+            Tooltip = data.Tooltip or "",
+            ExtraText = data.ExtraText or function() return "" end,
+            Enabled = false,
+            Function = data.Function or function() end,
+            Sliders = {},
+            Toggles = {},
+            SetEnabled = function(m, state)
+                if m.Enabled == state then return end
+                m.Enabled = state
+                local ok, err = pcall(m.Function, state)
+                if not ok then warn("[oofer] Module error:", m.Name, err) end
+                if m._node then
+                    m._node.TextColor3 = state and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
+                end
+            end
+        }
+
+        function mod:CreateSlider(opts)
+            local slider = {
+                Name = opts.Name,
+                Min = opts.Min or 0,
+                Max = opts.Max or 100,
+                Value = opts.Default or 0,
+                Suffix = opts.Suffix or function(v) return tostring(v) end,
+                Function = opts.Function or function() end,
+                Tooltip = opts.Tooltip or "",
+                Object = nil
+            }
+            table.insert(self.Sliders, slider)
+            -- If panel is already open, render immediately
+            local content = oofer._PanelContent[catName .. "Panel"]
+            if content then renderModuleRow(content, self) end
+            return slider
+        end
+
+        function mod:CreateToggle(opts)
+            local toggle = {
+                Name = opts.Name,
+                Enabled = opts.Default or false,
+                Function = opts.Function or function() end,
+                Tooltip = opts.Tooltip or "",
+                Object = nil
+            }
+            table.insert(self.Toggles, toggle)
+            local content = oofer._PanelContent[catName .. "Panel"]
+            if content then renderModuleRow(content, self) end
+            return toggle
+        end
+
+        table.insert(self.Modules, mod)
+
+        -- If panel exists, append UI for this module now
+        local content = oofer._PanelContent[catName .. "Panel"]
+        if content then renderModuleRow(content, mod) end
+
+        return mod
+    end
+
+    -- API names
+    oofer.Categories[catName].CreateButton = createModule
+    oofer.Categories[catName].CreateModule = createModule
+
+    -- Sidebar button
     local Btn = Instance.new("TextButton", container)
     Btn.Size = UDim2.new(1, -6, 0, 26)
     Btn.BackgroundTransparency = 1
@@ -194,7 +376,7 @@ for i, cat in ipairs(Categories) do
     Label.Size = UDim2.new(1, -28, 1, 0)
     Label.Position = UDim2.new(0, 28, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = cat.name
+    Label.Text = catName
     Label.Font = Enum.Font.Arcade
     Label.TextSize = 16
     Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -210,138 +392,19 @@ for i, cat in ipairs(Categories) do
     end)
 
     Btn.MouseButton1Click:Connect(function()
-        if ScreenGui:FindFirstChild(cat.name .. "Panel") then return end
-        local Panel = Instance.new("Frame")
-        Panel.Name = cat.name .. "Panel"
-        Panel.Size = UDim2.new(0, 200, 0, 400)
-        Panel.Position = UDim2.new(
-            Sidebar.Position.X.Scale,
-            Sidebar.Position.X.Offset + PanelXOffset * i,
-            Sidebar.Position.Y.Scale,
-            Sidebar.Position.Y.Offset
-        )
-        Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        Panel.BackgroundTransparency = 0.2
-        Panel.BorderSizePixel = 0
-        Panel.Parent = ScreenGui
-        Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 6)
-
-        local Header = Instance.new("TextLabel")
-        Header.Name = "Header"
-        Header.Size = UDim2.new(1, 0, 0, 30)
-        Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        Header.Text = cat.name
-        Header.Font = Enum.Font.Arcade
-        Header.TextSize = 18
-        Header.TextColor3 = Color3.fromRGB(255, 255, 255)
-        Header.BorderSizePixel = 0
-        Header.Parent = Panel
-
-        local Content = Instance.new("ScrollingFrame", Panel)
-        Content.Size = UDim2.new(1, 0, 1, -30)
-        Content.Position = UDim2.new(0, 0, 0, 30)
-        Content.BackgroundTransparency = 1
-        Content.ScrollBarThickness = 4
-
-        local UIList = Instance.new("UIListLayout", Content)
+        local panel, content = ensurePanel(catName, idx)
+        -- Render any not-yet-rendered modules
+        content:ClearAllChildren()
+        local UIList = Instance.new("UIListLayout", content)
         UIList.SortOrder = Enum.SortOrder.LayoutOrder
         UIList.Padding = UDim.new(0, 4)
-
-        task.spawn(function()
-            while Panel.Parent do
-                local MatrixChar = Instance.new("TextLabel")
-                MatrixChar.Size = UDim2.new(0, 14, 0, 14)
-                MatrixChar.Position = UDim2.new(math.random(), 0, 0, -20)
-                MatrixChar.BackgroundTransparency = 1
-                MatrixChar.Font = Enum.Font.Code
-                MatrixChar.TextSize = 14
-                MatrixChar.TextColor3 = Color3.fromRGB(0, 255, 0)
-                MatrixChar.Text = string.char(math.random(33, 126))
-                MatrixChar.Parent = Panel
-
-                task.spawn(function()
-                    for y = -20, 420, 10 do
-                        if not MatrixChar.Parent then break end
-                        MatrixChar.Position = UDim2.new(MatrixChar.Position.X.Scale, 0, 0, y)
-                        task.wait(0.03)
-                    end
-                    MatrixChar:Destroy()
-                end)
-
-                task.wait(0.1)
-            end
-        end)
-
-        local categoryData = oofer.Categories[cat.name]
-        if categoryData then
-            for _, mod in ipairs(categoryData.Modules) do
-                local ModBtn = Instance.new("TextButton")
-                ModBtn.Size = UDim2.new(1, -8, 0, 30)
-                ModBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-                ModBtn.Text = mod.Name
-                ModBtn.Font = Enum.Font.Arcade
-                ModBtn.TextSize = 16
-                ModBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                ModBtn.AutoButtonColor = false
-                ModBtn.Parent = Content
-                Instance.new("UICorner", ModBtn).CornerRadius = UDim.new(0, 6)
-
-                ModBtn.MouseButton1Click:Connect(function()
-                    mod.Enabled = not mod.Enabled
-                    mod.Function(mod.Enabled)
-                    ModBtn.TextColor3 = mod.Enabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
-                end)
-
-                for _, slider in ipairs(mod.Sliders) do
-                    local Box = Instance.new("TextBox")
-                    Box.Size = UDim2.new(1, -10, 0, 30)
-                    Box.Text = slider.Name .. ": " .. slider.Value
-                    Box.TextColor3 = Color3.fromRGB(255,255,255)
-                    Box.BackgroundColor3 = Color3.fromRGB(30,30,30)
-                    Box.ClearTextOnFocus = false
-                    Box.Font = Enum.Font.Arcade
-                    Box.TextSize = 16
-                    Box.Parent = Content
-                    Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 4)
-
-                    Box.FocusLost:Connect(function()
-                        local val = tonumber(Box.Text:match("[%d%.]+"))
-                        if val then
-                            val = math.clamp(val, slider.Min, slider.Max)
-                            slider.Value = val
-                            slider.Function(val)
-                            Box.Text = slider.Name .. ": " .. val .. " " .. slider.Suffix(val)
-                        else
-                            Box.Text = slider.Name .. ": " .. slider.Value
-                        end
-                    end)
-                end
-
-                for _, toggle in ipairs(mod.Toggles) do
-                    local TBtn = Instance.new("TextButton")
-                    TBtn.Size = UDim2.new(1, -8, 0, 30)
-                    TBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-                    TBtn.Text = toggle.Name
-                    TBtn.Font = Enum.Font.Arcade
-                    TBtn.TextSize = 16
-                    TBtn.TextColor3 = toggle.Enabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
-                    TBtn.AutoButtonColor = false
-                    TBtn.Parent = Content
-                    Instance.new("UICorner", TBtn).CornerRadius = UDim.new(0, 6)
-
-                    TBtn.MouseButton1Click:Connect(function()
-                        toggle.Enabled = not toggle.Enabled
-                        toggle.Function(toggle.Enabled)
-                        TBtn.TextColor3 = toggle.Enabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,255,255)
-                    end)
-                end
-            end
+        for _, mod in ipairs(oofer.Categories[catName].Modules) do
+            renderModuleRow(content, mod)
         end
-
-        MakeDraggable(Panel, Header)
     end)
 end
 
+-- Toggle key/button
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0, 80, 0, 30)
 ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
@@ -357,8 +420,8 @@ task.spawn(function()
     local text = "OOF"
     while true do
         local display = ""
-        for i = 1, #text do
-            display = display .. string.char(math.random(33, 126))
+        for _ = 1, #text do
+            display ..= string.char(math.random(33, 126))
         end
         ToggleBtn.Text = display
         task.wait(0.05)
@@ -368,30 +431,26 @@ task.spawn(function()
 end)
 
 local Visible = true
-ToggleBtn.MouseButton1Click:Connect(function()
-    Visible = not Visible
-    Sidebar.Visible = Visible
+local function setVisible(state)
+    Visible = state
+    Sidebar.Visible = state
     for _, child in pairs(ScreenGui:GetChildren()) do
         if child:IsA("Frame") and child.Name:find("Panel") then
-            child.Visible = Visible
+            child.Visible = state
         end
     end
-    Blur.Enabled = Visible
-    Tint.Enabled = Visible
-end)
+    Blur.Enabled = state
+    Tint.Enabled = state
+end
+
+ToggleBtn.MouseButton1Click:Connect(function() setVisible(not Visible) end)
 
 -- GLOBAL run helper so modules.lua can call run(function() ... end)
-function run(func)
-    task.spawn(func)
-end
+function run(func) task.spawn(func) end
 
 -- Single-file GitHub loader (loads after GUI+run exist)
 local rawUrl = "https://raw.githubusercontent.com/ooferowner/oofer/main/modules/modules.lua"
-
-local ok, err = pcall(function()
-    loadstring(game:HttpGet(rawUrl, true))()
-end)
-
+local ok, err = pcall(function() loadstring(game:HttpGet(rawUrl, true))() end)
 if not ok then
     warn("[Module Loader] Failed to load modules.lua:", err)
 else
