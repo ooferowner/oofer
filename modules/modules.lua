@@ -1083,120 +1083,61 @@ run(function()
 	end))
 end)
 run(function()
-    local Killaura
-    local Targets, Sort, SwingRange, AttackRange, ChargeTime, UpdateRate, AngleSlider, MaxTargets
-    local Mouse, Swing, GUI, BoxSwingColor, BoxAttackColor, ParticleTexture, ParticleColor1, ParticleColor2, ParticleSize
-    local Face, Animation, AnimationMode, AnimationSpeed, AnimationTween, Limit
-    local LegitAura, Particles, Boxes = {}, {}, {}
-    local killaurarangecircle, killauracolor
-    local killaurarangecirclepart
+    local SpeedModule
+    local SpeedSlider
+    local ResetToggle
+    local connection
 
-    -- Create the module in Blatant category
-    Killaura = oofer.Categories.Blatant:CreateModule({
-        Name = 'Killaura',
+    SpeedModule = oofer.Categories.Blatant:CreateModule({
+        Name = "Speed",
         Function = function(enabled)
+            local player = game.Players.LocalPlayer
+            local char = player.Character or player.CharacterAdded:Wait()
+            local humanoid = char:WaitForChild("Humanoid")
+
             if enabled then
-                -- Your attack loop logic here (unchanged from Vape version)
-                -- Replace any vape.* calls with oofer.* or remove if not needed
+                -- Apply speed change every frame
+                connection = game:GetService("RunService").RenderStepped:Connect(function()
+                    if humanoid and humanoid.Parent then
+                        humanoid.WalkSpeed = SpeedSlider.Value
+                    end
+                end)
             else
-                -- Cleanup when disabled
-                if killaurarangecirclepart then
-                    killaurarangecirclepart:Destroy()
-                    killaurarangecirclepart = nil
+                -- Cleanup
+                if connection then
+                    connection:Disconnect()
+                    connection = nil
                 end
-                for _, v in Boxes do v.Adornee = nil end
-                for _, v in Particles do v.Parent = nil end
+                if ResetToggle.Enabled and humanoid then
+                    humanoid.WalkSpeed = 16 -- default Roblox walkspeed
+                end
             end
         end,
-        ExtraText = function() return "Public" end,
-        Tooltip = 'Attack players around you\nwithout aiming at them.'
-    })
-
-    -- Targets
-    Targets = Killaura:CreateTargets({
-        Players = true,
-        NPCs = true
-    })
-
-    -- Sliders
-    SwingRange = Killaura:CreateSlider({
-        Name = 'Swing range', Min = 1, Max = 18, Default = 18,
-        Suffix = function(val) return val == 1 and 'stud' or 'studs' end
-    })
-    AttackRange = Killaura:CreateSlider({
-        Name = 'Attack range', Min = 1, Max = 18, Default = 18,
-        Suffix = function(val) return val == 1 and 'stud' or 'studs' end
-    })
-    ChargeTime = Killaura:CreateSlider({
-        Name = 'Charge time', Min = 0, Max = 1, Default = 0.42, Decimal = 100
-    })
-    AngleSlider = Killaura:CreateSlider({
-        Name = 'Max angle', Min = 1, Max = 360, Default = 360
-    })
-    UpdateRate = Killaura:CreateSlider({
-        Name = 'Update rate', Min = 1, Max = 540, Default = 60, Suffix = 'hz'
-    })
-    MaxTargets = Killaura:CreateSlider({
-        Name = 'Entities', Min = 1, Max = 10, Default = 5
-    })
-
-    -- Toggles
-    killaurarangecircle = Killaura:CreateToggle({
-        Name = "Range Visualizer",
-        Function = function(callback)
-            if callback then
-                killaurarangecirclepart = Instance.new("MeshPart")
-                killaurarangecirclepart.MeshId = "rbxassetid://3726303797"
-                killaurarangecirclepart.Color = Color3.fromHSV(killauracolor.Hue, killauracolor.Sat, killauracolor.Value)
-                killaurarangecirclepart.CanCollide = false
-                killaurarangecirclepart.Anchored = true
-                killaurarangecirclepart.Material = Enum.Material.Neon
-                killaurarangecirclepart.Size = Vector3.new(AttackRange.Value * 0.7, 0.01, AttackRange.Value * 0.7)
-                if Killaura.Enabled then
-                    killaurarangecirclepart.Parent = workspace.CurrentCamera
-                end
-            else
-                if killaurarangecirclepart then
-                    killaurarangecirclepart:Destroy()
-                    killaurarangecirclepart = nil
-                end
-            end
+        Tooltip = "Adjust your walking speed",
+        ExtraText = function()
+            return tostring(SpeedSlider and SpeedSlider.Value or "")
         end
     })
 
-    killauracolor = Killaura:CreateColorSlider({
-        Name = 'colour', Darker = true, DefaultHue = 0.6, DefaultOpacity = 0.5, Visible = true
+    -- Slider to control speed
+    SpeedSlider = SpeedModule:CreateSlider({
+        Name = "Speed",
+        Min = 16,
+        Max = 100,
+        Default = 30,
+        Suffix = function(val) return "stud/s" end,
+        Function = function(val)
+            -- Updates live while enabled
+        end,
+        Tooltip = "How fast you move"
     })
 
-    Mouse = Killaura:CreateToggle({ Name = 'Require mouse down' })
-    Swing = Killaura:CreateToggle({ Name = 'No Swing' })
-    GUI = Killaura:CreateToggle({ Name = 'GUI check' })
-    Face = Killaura:CreateToggle({ Name = 'Face target' })
-    Animation = Killaura:CreateToggle({ Name = 'Custom Animation' })
-    Limit = Killaura:CreateToggle({
-        Name = 'Limit to items',
-        Tooltip = 'Only attacks when the sword is held'
-    })
-
-    -- Color sliders
-    BoxSwingColor = Killaura:CreateColorSlider({
-        Name = 'Target Color', Darker = true, DefaultHue = 0.6, DefaultOpacity = 0.5, Visible = false
-    })
-    BoxAttackColor = Killaura:CreateColorSlider({
-        Name = 'Attack Color', Darker = true, DefaultOpacity = 0.5, Visible = false
-    })
-
-    -- Particle settings
-    ParticleTexture = Killaura:CreateTextBox({
-        Name = 'Texture', Default = 'rbxassetid://14736249347', Darker = true, Visible = false
-    })
-    ParticleColor1 = Killaura:CreateColorSlider({
-        Name = 'Color Begin', Darker = true, Visible = false
-    })
-    ParticleColor2 = Killaura:CreateColorSlider({
-        Name = 'Color End', Darker = true, Visible = false
-    })
-    ParticleSize = Killaura:CreateSlider({
-        Name = 'Size', Min = 0, Max = 1, Default = 0.2, Decimal = 100, Darker = true, Visible = false
+    -- Toggle to reset speed on disable
+    ResetToggle = SpeedModule:CreateToggle({
+        Name = "Reset on disable",
+        Function = function(val)
+            -- Just stores the state
+        end,
+        Tooltip = "Return to default speed when module is off"
     })
 end)
