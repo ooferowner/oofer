@@ -4,7 +4,7 @@ end
 local cloneref = cloneref or function(obj)
 	return obj
 end
-local vapeEvents = setmetatable({}, {
+local ooferEvents = setmetatable({}, {
 	__index = function(self, index)
 		self[index] = Instance.new('BindableEvent')
 		return self[index]
@@ -31,17 +31,17 @@ local gameCamera = workspace.CurrentCamera
 local lplr = playersService.LocalPlayer
 local assetfunction = getcustomasset
 
-local vape = shared.vape
-local entitylib = vape.Libraries.entity
-local targetinfo = vape.Libraries.targetinfo
-local sessioninfo = vape.Libraries.sessioninfo
-local uipallet = vape.Libraries.uipallet
-local tween = vape.Libraries.tween
-local color = vape.Libraries.color
-local whitelist = vape.Libraries.whitelist
-local prediction = vape.Libraries.prediction
-local getfontsize = vape.Libraries.getfontsize
-local getcustomasset = vape.Libraries.getcustomasset
+local oofer = shared.oofer
+local entitylib = oofer.Libraries.entity
+local targetinfo = oofer.Libraries.targetinfo
+local sessioninfo = oofer.Libraries.sessioninfo
+local uipallet = oofer.Libraries.uipallet
+local tween = oofer.Libraries.tween
+local color = oofer.Libraries.color
+local whitelist = oofer.Libraries.whitelist
+local prediction = oofer.Libraries.prediction
+local getfontsize = oofer.Libraries.getfontsize
+local getcustomasset = oofer.Libraries.getcustomasset
 
 local store = {
 	attackReach = 0,
@@ -73,7 +73,7 @@ local function addBlur(parent)
 	blur.Size = UDim2.new(1, 89, 1, 52)
 	blur.Position = UDim2.fromOffset(-48, -31)
 	blur.BackgroundTransparency = 1
-	blur.Image = getcustomasset('newvape/assets/new/blur.png')
+	blur.Image = getcustomasset('newoofer/assets/new/blur.png')
 	blur.ScaleType = Enum.ScaleType.Slice
 	blur.SliceCenter = Rect.new(52, 31, 261, 502)
 	blur.Parent = parent
@@ -310,17 +310,17 @@ local function hotbarSwitch(slot)
 			type = 'InventorySelectHotbarSlot',
 			slot = slot
 		})
-		vapeEvents.InventoryChanged.Event:Wait()
+		ooferEvents.InventoryChanged.Event:Wait()
 		return true
 	end
 	return false
 end
 
 local function isFriend(plr, recolor)
-	if vape.Categories.Friends.Options['Use friends'].Enabled then
-		local friend = table.find(vape.Categories.Friends.ListEnabled, plr.Name) and true
+	if oofer.Categories.Friends.Options['Use friends'].Enabled then
+		local friend = table.find(oofer.Categories.Friends.ListEnabled, plr.Name) and true
 		if recolor then
-			friend = friend and vape.Categories.Friends.Options['Recolor visuals'].Enabled
+			friend = friend and oofer.Categories.Friends.Options['Recolor visuals'].Enabled
 		end
 		return friend
 	end
@@ -328,11 +328,11 @@ local function isFriend(plr, recolor)
 end
 
 local function isTarget(plr)
-	return table.find(vape.Categories.Targets.ListEnabled, plr.Name) and true
+	return table.find(oofer.Categories.Targets.ListEnabled, plr.Name) and true
 end
 
 local function notif(...) return
-	vape:CreateNotification(...)
+	oofer:CreateNotification(...)
 end
 
 local function removeTags(str)
@@ -536,7 +536,7 @@ run(function()
 					entitylib.isAlive = true
 					entitylib.Events.LocalAdded:Fire(entity)
 					table.insert(entitylib.Connections, char.AttributeChanged:Connect(function(attr)
-						vapeEvents.AttributeChanged:Fire(attr)
+						ooferEvents.AttributeChanged:Fire(attr)
 					end))
 				else
 					entity.Targetable = entitylib.targetCheck(entity)
@@ -638,7 +638,7 @@ run(function()
 		if not select(2, whitelist:get(ent.Player)) then return false end
 		return lplr:GetAttribute('Team') ~= ent.Player:GetAttribute('Team')
 	end
-	vape:Clean(entitylib.Events.LocalAdded:Connect(updateVelocity))
+	oofer:Clean(entitylib.Events.LocalAdded:Connect(updateVelocity))
 end)
 entitylib.start()
 
@@ -773,7 +773,7 @@ run(function()
 	for i, v in remoteNames do
 		local remote = dumpRemote(debug.getconstants(v))
 		if remote == '' then
-			notif('Vape', 'Failed to grab remote ('..i..')', 10, 'alert')
+			notif('oofer', 'Failed to grab remote ('..i..')', 10, 'alert')
 		end
 		remotes[i] = remote
 	end
@@ -998,11 +998,11 @@ run(function()
 			store.inventory = newinv
 
 			if newinv ~= oldinv then
-				vapeEvents.InventoryChanged:Fire()
+				ooferEvents.InventoryChanged:Fire()
 			end
 
 			if newinv.inventory.items ~= oldinv.inventory.items then
-				vapeEvents.InventoryAmountChanged:Fire()
+				ooferEvents.InventoryAmountChanged:Fire()
 				store.tools.sword = getSword()
 				for _, v in {'stone', 'wood', 'wool'} do
 					store.tools[v] = getTool(v)
@@ -1029,16 +1029,16 @@ run(function()
 	updateStore(bedwars.Store:getState(), {})
 
 	for _, event in {'MatchEndEvent', 'EntityDeathEvent', 'BedwarsBedBreak', 'BalloonPopped', 'AngelProgress', 'GrapplingHookFunctions'} do
-		if not vape.Connections then return end
+		if not oofer.Connections then return end
 		bedwars.Client:WaitFor(event):andThen(function(connection)
-			vape:Clean(connection:Connect(function(...)
-				vapeEvents[event]:Fire(...)
+			oofer:Clean(connection:Connect(function(...)
+				ooferEvents[event]:Fire(...)
 			end))
 		end)
 	end
 
-	vape:Clean(bedwars.ZapNetworking.EntityDamageEventZap.On(function(...)
-		vapeEvents.EntityDamageEvent:Fire({
+	oofer:Clean(bedwars.ZapNetworking.EntityDamageEventZap.On(function(...)
+		ooferEvents.EntityDamageEvent:Fire({
 			entityInstance = ...,
 			damage = select(2, ...),
 			damageType = select(3, ...),
@@ -1051,7 +1051,7 @@ run(function()
 	end))
 
 	for _, event in {'PlaceBlockEvent', 'BreakBlockEvent'} do
-		vape:Clean(bedwars.ZapNetworking[event..'Zap'].On(function(...)
+		oofer:Clean(bedwars.ZapNetworking[event..'Zap'].On(function(...)
 			local data = {
 				blockRef = {
 					blockPosition = ...,
@@ -1065,7 +1065,7 @@ run(function()
 					cache[i] = nil
 				end
 			end
-			vapeEvents[event]:Fire(data)
+			ooferEvents[event]:Fire(data)
 		end))
 	end
 
@@ -1102,26 +1102,26 @@ run(function()
 
 	task.spawn(function()
 		pcall(function()
-			repeat task.wait() until store.matchState ~= 0 or vape.Loaded == nil
-			if vape.Loaded == nil then return end
+			repeat task.wait() until store.matchState ~= 0 or oofer.Loaded == nil
+			if oofer.Loaded == nil then return end
 			mapname = workspace:WaitForChild('Map', 5):WaitForChild('Worlds', 5):GetChildren()[1].Name
 			mapname = string.gsub(string.split(mapname, '_')[2] or mapname, '-', '') or 'Blank'
 		end)
 	end)
 
-	vape:Clean(vapeEvents.BedwarsBedBreak.Event:Connect(function(bedTable)
+	oofer:Clean(ooferEvents.BedwarsBedBreak.Event:Connect(function(bedTable)
 		if bedTable.player and bedTable.player.UserId == lplr.UserId then
 			beds:Increment()
 		end
 	end))
 
-	vape:Clean(vapeEvents.MatchEndEvent.Event:Connect(function(winTable)
+	oofer:Clean(ooferEvents.MatchEndEvent.Event:Connect(function(winTable)
 		if (bedwars.Store:getState().Game.myTeam or {}).id == winTable.winningTeamId or lplr.Neutral then
 			wins:Increment()
 		end
 	end))
 
-	vape:Clean(vapeEvents.EntityDeathEvent.Event:Connect(function(deathTable)
+	oofer:Clean(ooferEvents.EntityDeathEvent.Event:Connect(function(deathTable)
 		local killer = playersService:GetPlayerFromCharacter(deathTable.fromEntity)
 		local killed = playersService:GetPlayerFromCharacter(deathTable.entityInstance)
 		if not killed or not killer then return end
@@ -1145,7 +1145,7 @@ run(function()
 				end
 			end
 			task.wait()
-		until vape.Loaded == nil
+		until oofer.Loaded == nil
 	end)
 
 	pcall(function()
@@ -1163,7 +1163,7 @@ run(function()
 			task.spawn(function()
 				repeat
 					task.wait(0.1)
-				until vape.Loaded == nil or bedwars.AppController:isAppOpen('BedwarsItemShopApp')
+				until oofer.Loaded == nil or bedwars.AppController:isAppOpen('BedwarsItemShopApp')
 
 				bedwars.Shop = require(replicatedStorage.TS.games.bedwars.shop['bedwars-shop']).BedwarsShop
 				bedwars.ShopItems = debug.getupvalue(debug.getupvalue(bedwars.Shop.getShopItem, 1), 2)
@@ -1172,11 +1172,11 @@ run(function()
 		end
 	end)
 
-	vape:Clean(function()
+	oofer:Clean(function()
 		Client.Get = OldGet
 		bedwars.BlockController.isBlockBreakable = OldBreak
 		store.blockPlacer:disable()
-		for _, v in vapeEvents do
+		for _, v in ooferEvents do
 			v:Destroy()
 		end
 		for _, v in cache do
@@ -1184,7 +1184,7 @@ run(function()
 			table.clear(v)
 		end
 		table.clear(store.blockPlacer)
-		table.clear(vapeEvents)
+		table.clear(ooferEvents)
 		table.clear(bedwars)
 		table.clear(store)
 		table.clear(cache)
@@ -1196,7 +1196,7 @@ run(function()
 end)
 
 for _, v in {'AntiRagdoll', 'TriggerBot', 'SilentAim', 'AutoRejoin', 'Rejoin', 'Disabler', 'Timer', 'ServerHop', 'MouseTP', 'MurderMystery'} do
-	vape:Remove(v)
+	oofer:Remove(v)
 end
 run(function()
 	local AimAssist
@@ -1209,7 +1209,7 @@ run(function()
 	local KillauraTarget
 	local ClickAim
 	
-	AimAssist = vape.Categories.Combat:CreateModule({
+	AimAssist = oofer.Categories.Combat:CreateModule({
 		Name = 'AimAssist',
 		Function = function(callback)
 			if callback then
@@ -1286,7 +1286,7 @@ end)
 run(function()
 	local old
 	
-	AutoCharge = vape.Categories.Combat:CreateModule({
+	AutoCharge = oofer.Categories.Combat:CreateModule({
 	    Name = 'AutoCharge',
 	    Function = function(callback)
 	        debug.setconstant(bedwars.SwordController.attackEntity, 58, callback and 'damage' or 'multiHitCheckDurationSec')
@@ -1370,7 +1370,7 @@ run(function()
 		end)
 	end
 	
-	AutoClicker = vape.Categories.Combat:CreateModule({
+	AutoClicker = oofer.Categories.Combat:CreateModule({
 		Name = 'AutoClicker',
 		Function = function(callback)
 			if callback then
@@ -1436,7 +1436,7 @@ end)
 run(function()
 	local old
 	
-	vape.Categories.Combat:CreateModule({
+	oofer.Categories.Combat:CreateModule({
 		Name = 'NoClickDelay',
 		Function = function(callback)
 			if callback then
@@ -1456,7 +1456,7 @@ end)
 run(function()
 	local Value
 	
-	Reach = vape.Categories.Combat:CreateModule({
+	Reach = oofer.Categories.Combat:CreateModule({
 		Name = 'Reach',
 		Function = function(callback)
 			bedwars.CombatConstant.RAYCAST_SWORD_CHARACTER_DISTANCE = callback and Value.Value + 2 or 14.4
@@ -1483,7 +1483,7 @@ run(function()
 	local Sprint
 	local old
 	
-	Sprint = vape.Categories.Combat:CreateModule({
+	Sprint = oofer.Categories.Combat:CreateModule({
 		Name = 'Sprint',
 		Function = function(callback)
 			if callback then
@@ -1523,7 +1523,7 @@ run(function()
 	local CPS
 	local rayParams = RaycastParams.new()
 	
-	TriggerBot = vape.Categories.Combat:CreateModule({
+	TriggerBot = oofer.Categories.Combat:CreateModule({
 		Name = 'TriggerBot',
 		Function = function(callback)
 			if callback then
@@ -1578,7 +1578,7 @@ run(function()
 	local TargetCheck
 	local rand, old = Random.new()
 	
-	Velocity = vape.Categories.Combat:CreateModule({
+	Velocity = oofer.Categories.Combat:CreateModule({
 		Name = 'Velocity',
 		Function = function(callback)
 			if callback then
@@ -1650,7 +1650,7 @@ run(function()
 		return mag
 	end
 
-	AntiFall = vape.Categories.Blatant:CreateModule({
+	AntiFall = oofer.Categories.Blatant:CreateModule({
 		Name = 'AntiFall',
 		Function = function(callback)
 			if callback then
@@ -1679,7 +1679,7 @@ run(function()
 									local lastTeleport = lplr:GetAttribute('LastTeleported')
 									local connection
 									connection = runService.PreSimulation:Connect(function()
-										if vape.Modules.Fly.Enabled or vape.Modules.InfiniteFly.Enabled or vape.Modules.LongJump.Enabled then
+										if oofer.Modules.Fly.Enabled or oofer.Modules.InfiniteFly.Enabled or oofer.Modules.LongJump.Enabled then
 											connection:Disconnect()
 											AntiFallDirection = nil
 											return
@@ -1773,7 +1773,7 @@ run(function()
 	local FastBreak
 	local Time
 	
-	FastBreak = vape.Categories.Blatant:CreateModule({
+	FastBreak = oofer.Categories.Blatant:CreateModule({
 		Name = 'FastBreak',
 		Function = function(callback)
 			if callback then
@@ -1809,7 +1809,7 @@ run(function()
 	rayCheck.RespectCanCollide = true
 	local up, down, old = 0, 0
 
-	Fly = vape.Categories.Blatant:CreateModule({
+	Fly = oofer.Categories.Blatant:CreateModule({
 		Name = 'Fly',
 		Function = function(callback)
 			frictionTable.Fly = callback or nil
@@ -1822,7 +1822,7 @@ run(function()
 				if lplr.Character and (lplr.Character:GetAttribute('InflatedBalloons') or 0) == 0 and getItem('balloon') then
 					bedwars.BalloonController:inflateBalloon()
 				end
-				Fly:Clean(vapeEvents.AttributeChanged.Event:Connect(function(changed)
+				Fly:Clean(ooferEvents.AttributeChanged.Event:Connect(function(changed)
 					if changed == 'InflatedBalloons' and (lplr.Character:GetAttribute('InflatedBalloons') or 0) == 0 and getItem('balloon') then
 						bedwars.BalloonController:inflateBalloon()
 					end
@@ -1968,7 +1968,7 @@ run(function()
 		end
 	end
 	
-	HitBoxes = vape.Categories.Blatant:CreateModule({
+	HitBoxes = oofer.Categories.Blatant:CreateModule({
 		Name = 'HitBoxes',
 		Function = function(callback)
 			if callback then
@@ -2035,7 +2035,7 @@ run(function()
 end)
 	
 run(function()
-	vape.Categories.Blatant:CreateModule({
+	oofer.Categories.Blatant:CreateModule({
 		Name = 'KeepSprint',
 		Function = function(callback)
 			debug.setconstant(bedwars.SprintController.startSprinting, 5, callback and 'blockSprinting' or 'blockSprint')
@@ -2073,7 +2073,7 @@ run(function()
 	local Limit
 	local LegitAura = {}
 	local Particles, Boxes = {}, {}
-	local anims, AnimDelay, AnimTween, armC0 = vape.Libraries.auraanims, tick()
+	local anims, AnimDelay, AnimTween, armC0 = oofer.Libraries.auraanims, tick()
 	local AttackRemote = {FireServer = function() end}
 	task.spawn(function()
 		AttackRemote = bedwars.Client:Get(remotes.AttackEntity).instance
@@ -2103,7 +2103,7 @@ run(function()
 		return sword, meta
 	end
 
-	Killaura = vape.Categories.Blatant:CreateModule({
+	Killaura = oofer.Categories.Blatant:CreateModule({
 		Name = 'Killaura',
 		Function = function(callback)
 			if callback then
@@ -2211,7 +2211,7 @@ run(function()
 											bedwars.ScytheController:playLocalAnimation()
 										end
 
-										if vape.ThreadFix then
+										if oofer.ThreadFix then
 											setthreadidentity(8)
 										end
 									end
@@ -2373,7 +2373,7 @@ run(function()
 					box.Size = Vector3.new(3, 5, 3)
 					box.CFrame = CFrame.new(0, -0.5, 0)
 					box.ZIndex = 0
-					box.Parent = vape.gui
+					box.Parent = oofer.gui
 					Boxes[i] = box
 				end
 			else
@@ -2614,7 +2614,7 @@ run(function()
 			end)
 		end,
 		cat = function(_, _, dir)
-			LongJump:Clean(vapeEvents.CatPounce.Event:Connect(function()
+			LongJump:Clean(ooferEvents.CatPounce.Event:Connect(function()
 				JumpSpeed = 4 * Value.Value
 				JumpTick = tick() + 2.5
 				Direction = Vector3.new(dir.X, 0, dir.Z).Unit
@@ -2679,13 +2679,13 @@ run(function()
 	LongJumpMethods.siege_tnt = LongJumpMethods.tnt
 	LongJumpMethods.pirate_gunpowder_barrel = LongJumpMethods.tnt
 	
-	LongJump = vape.Categories.Blatant:CreateModule({
+	LongJump = oofer.Categories.Blatant:CreateModule({
 		Name = 'LongJump',
 		Function = function(callback)
 			frictionTable.LongJump = callback or nil
 			updateVelocity()
 			if callback then
-				LongJump:Clean(vapeEvents.EntityDamageEvent.Event:Connect(function(damageTable)
+				LongJump:Clean(ooferEvents.EntityDamageEvent.Event:Connect(function(damageTable)
 					if damageTable.entityInstance == lplr.Character and damageTable.fromEntity == lplr.Character and (not damageTable.knockbackMultiplier or not damageTable.knockbackMultiplier.disabled) then
 						local knockbackBoost = bedwars.KnockbackUtil.calculateKnockbackVelocity(Vector3.one, 1, {
 							vertical = 0,
@@ -2702,7 +2702,7 @@ run(function()
 						end
 					end
 				end))
-				LongJump:Clean(vapeEvents.GrapplingHookFunctions.Event:Connect(function(dataTable)
+				LongJump:Clean(ooferEvents.GrapplingHookFunctions.Event:Connect(function(dataTable)
 					if dataTable.hookFunction == 'PLAYER_IN_TRANSIT' then
 						local vec = entitylib.character.RootPart.CFrame.LookVector
 						JumpSpeed = 2.5 * Value.Value
@@ -2782,7 +2782,7 @@ run(function()
 		groundHit = bedwars.Client:Get(remotes.GroundHit).instance
 	end)
 	
-	NoFall = vape.Categories.Blatant:CreateModule({
+	NoFall = oofer.Categories.Blatant:CreateModule({
 		Name = 'NoFall',
 		Function = function(callback)
 			if callback then
@@ -2860,7 +2860,7 @@ end)
 run(function()
 	local old
 	
-	vape.Categories.Blatant:CreateModule({
+	oofer.Categories.Blatant:CreateModule({
 		Name = 'NoSlowdown',
 		Function = function(callback)
 			local modifier = bedwars.SprintController:getMovementStatusModifier()
@@ -2897,7 +2897,7 @@ run(function()
 	rayCheck.FilterDescendantsInstances = {workspace:FindFirstChild('Map')}
 	local old
 	
-	local ProjectileAimbot = vape.Categories.Blatant:CreateModule({
+	local ProjectileAimbot = oofer.Categories.Blatant:CreateModule({
 		Name = 'ProjectileAimbot',
 		Function = function(callback)
 			if callback then
@@ -3027,7 +3027,7 @@ run(function()
 		return items
 	end
 	
-	ProjectileAura = vape.Categories.Blatant:CreateModule({
+	ProjectileAura = oofer.Categories.Blatant:CreateModule({
 		Name = 'ProjectileAura',
 		Function = function(callback)
 			if callback then
@@ -3113,7 +3113,7 @@ run(function()
 	local rayCheck = RaycastParams.new()
 	rayCheck.RespectCanCollide = true
 	
-	Speed = vape.Categories.Blatant:CreateModule({
+	Speed = oofer.Categories.Blatant:CreateModule({
 		Name = 'Speed',
 		Function = function(callback)
 			frictionTable.Speed = callback or nil
@@ -3186,7 +3186,7 @@ run(function()
 	local BedESP
 	local Reference = {}
 	local Folder = Instance.new('Folder')
-	Folder.Parent = vape.gui
+	Folder.Parent = oofer.gui
 	
 	local function Added(bed)
 		if not BedESP.Enabled then return end
@@ -3220,7 +3220,7 @@ run(function()
 		table.clear(parts)
 	end
 	
-	BedESP = vape.Categories.Render:CreateModule({
+	BedESP = oofer.Categories.Render:CreateModule({
 		Name = 'BedESP',
 		Function = function(callback)
 			if callback then
@@ -3248,7 +3248,7 @@ end)
 run(function()
 	local Health
 	
-	Health = vape.Categories.Render:CreateModule({
+	Health = oofer.Categories.Render:CreateModule({
 		Name = 'Health',
 		Function = function(callback)
 			if callback then
@@ -3261,9 +3261,9 @@ run(function()
 				label.TextColor3 = entitylib.isAlive and Color3.fromHSV((lplr.Character:GetAttribute('Health') / lplr.Character:GetAttribute('MaxHealth')) / 2.8, 0.86, 1) or Color3.new()
 				label.TextSize = 18
 				label.Font = Enum.Font.Arial
-				label.Parent = vape.gui
+				label.Parent = oofer.gui
 				Health:Clean(label)
-				Health:Clean(vapeEvents.AttributeChanged.Event:Connect(function()
+				Health:Clean(ooferEvents.AttributeChanged.Event:Connect(function()
 					label.Text = entitylib.isAlive and math.round(lplr.Character:GetAttribute('Health'))..' ❤️' or ''
 					label.TextColor3 = entitylib.isAlive and Color3.fromHSV((lplr.Character:GetAttribute('Health') / lplr.Character:GetAttribute('MaxHealth')) / 2.8, 0.86, 1) or Color3.new()
 				end))
@@ -3279,7 +3279,7 @@ run(function()
 	local Color = {}
 	local Reference = {}
 	local Folder = Instance.new('Folder')
-	Folder.Parent = vape.gui
+	Folder.Parent = oofer.gui
 	
 	local ESPKits = {
 		alchemist = {'alchemist_ingedients', 'wild_flower'},
@@ -3333,7 +3333,7 @@ run(function()
 		end
 	end
 	
-	KitESP = vape.Categories.Render:CreateModule({
+	KitESP = oofer.Categories.Render:CreateModule({
 		Name = 'KitESP',
 		Function = function(callback)
 			if callback then
@@ -3391,7 +3391,7 @@ run(function()
 	local DistanceLimit
 	local Strings, Sizes, Reference = {}, {}, {}
 	local Folder = Instance.new('Folder')
-	Folder.Parent = vape.gui
+	Folder.Parent = oofer.gui
 	local methodused
 	
 	local Added = {
@@ -3532,7 +3532,7 @@ run(function()
 		Drawing = function(ent)
 			local nametag = Reference[ent]
 			if nametag then
-				if vape.ThreadFix then
+				if oofer.ThreadFix then
 					setthreadidentity(8)
 				end
 				Sizes[ent] = nil
@@ -3631,7 +3631,7 @@ run(function()
 		end
 	}
 	
-	NameTags = vape.Categories.Render:CreateModule({
+	NameTags = oofer.Categories.Render:CreateModule({
 		Name = 'NameTags',
 		Function = function(callback)
 			if callback then
@@ -3660,7 +3660,7 @@ run(function()
 					end
 				end
 				if ColorFunc[methodused] then
-					NameTags:Clean(vape.Categories.Friends.ColorUpdate.Event:Connect(function()
+					NameTags:Clean(oofer.Categories.Friends.ColorUpdate.Event:Connect(function()
 						ColorFunc[methodused](Color.Hue, Color.Sat, Color.Value)
 					end))
 				end
@@ -3810,7 +3810,7 @@ run(function()
 	local Color = {}
 	local Reference = {}
 	local Folder = Instance.new('Folder')
-	Folder.Parent = vape.gui
+	Folder.Parent = oofer.gui
 	
 	local function nearStorageItem(item)
 		for _, v in List.ListEnabled do
@@ -3894,7 +3894,7 @@ run(function()
 		task.spawn(refreshAdornee, billboard)
 	end
 	
-	StorageESP = vape.Categories.Render:CreateModule({
+	StorageESP = oofer.Categories.Render:CreateModule({
 		Name = 'StorageESP',
 		Function = function(callback)
 			if callback then
@@ -3945,7 +3945,7 @@ end)
 run(function()
 	local AutoBalloon
 	
-	AutoBalloon = vape.Categories.Utility:CreateModule({
+	AutoBalloon = oofer.Categories.Utility:CreateModule({
 		Name = 'AutoBalloon',
 		Function = function(callback)
 			if callback then
@@ -4065,7 +4065,7 @@ run(function()
 		cat = function()
 			local old = bedwars.CatController.leap
 			bedwars.CatController.leap = function(...)
-				vapeEvents.CatPounce:Fire()
+				ooferEvents.CatPounce:Fire()
 				return old(...)
 			end
 	
@@ -4329,7 +4329,7 @@ run(function()
 		end
 	}
 	
-	AutoKit = vape.Categories.Utility:CreateModule({
+	AutoKit = oofer.Categories.Utility:CreateModule({
 		Name = 'AutoKit',
 		Function = function(callback)
 			if callback then
@@ -4382,7 +4382,7 @@ run(function()
 		end
 	end
 	
-	AutoPearl = vape.Categories.Utility:CreateModule({
+	AutoPearl = oofer.Categories.Utility:CreateModule({
 		Name = 'AutoPearl',
 		Function = function(callback)
 			if callback then
@@ -4439,16 +4439,16 @@ run(function()
 		end
 	end
 	
-	AutoPlay = vape.Categories.Utility:CreateModule({
+	AutoPlay = oofer.Categories.Utility:CreateModule({
 		Name = 'AutoPlay',
 		Function = function(callback)
 			if callback then
-				AutoPlay:Clean(vapeEvents.EntityDeathEvent.Event:Connect(function(deathTable)
+				AutoPlay:Clean(ooferEvents.EntityDeathEvent.Event:Connect(function(deathTable)
 					if deathTable.finalKill and deathTable.entityInstance == lplr.Character and isEveryoneDead() and store.matchState ~= 2 then
 						joinQueue()
 					end
 				end))
-				AutoPlay:Clean(vapeEvents.MatchEndEvent.Event:Connect(joinQueue))
+				AutoPlay:Clean(ooferEvents.MatchEndEvent.Event:Connect(joinQueue))
 			end
 		end,
 		Tooltip = 'Automatically queues after the match ends.'
@@ -4470,7 +4470,7 @@ run(function()
 		return crossbows
 	end
 	
-	vape.Categories.Utility:CreateModule({
+	oofer.Categories.Utility:CreateModule({
 		Name = 'AutoShoot',
 		Function = function(callback)
 			if callback then
@@ -4532,11 +4532,11 @@ run(function()
 		end
 	end
 	
-	AutoToxic = vape.Categories.Utility:CreateModule({
+	AutoToxic = oofer.Categories.Utility:CreateModule({
 		Name = 'AutoToxic',
 		Function = function(callback)
 			if callback then
-				AutoToxic:Clean(vapeEvents.BedwarsBedBreak.Event:Connect(function(bedTable)
+				AutoToxic:Clean(ooferEvents.BedwarsBedBreak.Event:Connect(function(bedTable)
 					if Toggles.BedDestroyed.Enabled and bedTable.brokenBedTeam.id == lplr:GetAttribute('Team') then
 						sendMessage('BedDestroyed', (bedTable.player.DisplayName or bedTable.player.Name), 'how dare you >:( | <obj>')
 					elseif Toggles.Bed.Enabled and bedTable.player.UserId == lplr.UserId then
@@ -4544,7 +4544,7 @@ run(function()
 						sendMessage('Bed', team and team.displayName:lower() or 'white', 'nice bed lul | <obj>')
 					end
 				end))
-				AutoToxic:Clean(vapeEvents.EntityDeathEvent.Event:Connect(function(deathTable)
+				AutoToxic:Clean(ooferEvents.EntityDeathEvent.Event:Connect(function(deathTable)
 					if deathTable.finalKill then
 						local killer = playersService:GetPlayerFromCharacter(deathTable.fromEntity)
 						local killed = playersService:GetPlayerFromCharacter(deathTable.entityInstance)
@@ -4559,7 +4559,7 @@ run(function()
 						end
 					end
 				end))
-				AutoToxic:Clean(vapeEvents.MatchEndEvent.Event:Connect(function(winstuff)
+				AutoToxic:Clean(ooferEvents.MatchEndEvent.Event:Connect(function(winstuff)
 					if GG.Enabled then
 						if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 							textChatService.ChatInputBarConfiguration.TargetTextChannel:SendAsync('gg')
@@ -4604,7 +4604,7 @@ run(function()
 	local AutoVoidDrop
 	local OwlCheck
 	
-	AutoVoidDrop = vape.Categories.Utility:CreateModule({
+	AutoVoidDrop = oofer.Categories.Utility:CreateModule({
 		Name = 'AutoVoidDrop',
 		Function = function(callback)
 			if callback then
@@ -4657,7 +4657,7 @@ end)
 run(function()
 	local MissileTP
 	
-	MissileTP = vape.Categories.Utility:CreateModule({
+	MissileTP = oofer.Categories.Utility:CreateModule({
 		Name = 'MissileTP',
 		Function = function(callback)
 			if callback then
@@ -4701,7 +4701,7 @@ run(function()
 	local Network
 	local Lower
 	
-	PickupRange = vape.Categories.Utility:CreateModule({
+	PickupRange = oofer.Categories.Utility:CreateModule({
 		Name = 'PickupRange',
 		Function = function(callback)
 			if callback then
@@ -4761,7 +4761,7 @@ end)
 run(function()
 	local RavenTP
 	
-	RavenTP = vape.Categories.Utility:CreateModule({
+	RavenTP = oofer.Categories.Utility:CreateModule({
 		Name = 'RavenTP',
 		Function = function(callback)
 			if callback then
@@ -4870,7 +4870,7 @@ run(function()
 		return nil, 0
 	end
 	
-	Scaffold = vape.Categories.Utility:CreateModule({
+	Scaffold = oofer.Categories.Utility:CreateModule({
 		Name = 'Scaffold',
 		Function = function(callback)
 			if label then
@@ -4965,7 +4965,7 @@ run(function()
 				label.RichText = true
 				label.Font = Enum.Font.Arial
 				label.Visible = Scaffold.Enabled
-				label.Parent = vape.gui
+				label.Parent = oofer.gui
 			else
 				label:Destroy()
 				label = nil
@@ -4978,7 +4978,7 @@ run(function()
 	local ShopTierBypass
 	local tiered, nexttier = {}, {}
 	
-	ShopTierBypass = vape.Categories.Utility:CreateModule({
+	ShopTierBypass = oofer.Categories.Utility:CreateModule({
 		Name = 'ShopTierBypass',
 		Function = function(callback)
 			if callback then
@@ -5028,8 +5028,8 @@ run(function()
 	end
 	
 	local function staffFunction(plr, checktype)
-		if not vape.Loaded then
-			repeat task.wait() until vape.Loaded
+		if not oofer.Loaded then
+			repeat task.wait() until oofer.Loaded
 		end
 	
 		notif('StaffDetector', 'Staff Detected ('..checktype..'): '..plr.Name..' ('..plr.UserId..')', 60, 'alert')
@@ -5041,7 +5041,7 @@ run(function()
 	
 		if Mode.Value == 'Uninject' then
 			task.spawn(function()
-				vape:Uninject()
+				oofer:Uninject()
 			end)
 			game:GetService('StarterGui'):SetCore('SendNotification', {
 				Title = 'StaffDetector',
@@ -5051,14 +5051,14 @@ run(function()
 		elseif Mode.Value == 'Requeue' then
 			bedwars.QueueController:joinQueue(store.queueType)
 		elseif Mode.Value == 'Profile' then
-			vape.Save = function() end
-			if vape.Profile ~= Profile.Value then
-				vape:Load(true, Profile.Value)
+			oofer.Save = function() end
+			if oofer.Profile ~= Profile.Value then
+				oofer:Load(true, Profile.Value)
 			end
 		elseif Mode.Value == 'AutoConfig' then
 			local safe = {'AutoClicker', 'Reach', 'Sprint', 'HitFix', 'StaffDetector'}
-			vape.Save = function() end
-			for i, v in vape.Modules do
+			oofer.Save = function() end
+			for i, v in oofer.Modules do
 				if not (table.find(safe, i) or v.Category == 'Render') then
 					if v.Enabled then
 						v:Toggle()
@@ -5122,14 +5122,14 @@ run(function()
 				plr:GetAttributeChangedSignal('ClanTag'):Wait()
 			end
 	
-			if table.find(blacklistedclans, plr:GetAttribute('ClanTag')) and vape.Loaded and Clans.Enabled then
+			if table.find(blacklistedclans, plr:GetAttribute('ClanTag')) and oofer.Loaded and Clans.Enabled then
 				connection:Disconnect()
 				staffFunction(plr, 'blacklisted_clan_'..plr:GetAttribute('ClanTag'):lower())
 			end
 		end
 	end
 	
-	StaffDetector = vape.Categories.Utility:CreateModule({
+	StaffDetector = oofer.Categories.Utility:CreateModule({
 		Name = 'StaffDetector',
 		Function = function(callback)
 			if callback then
@@ -5171,22 +5171,22 @@ run(function()
 	})
 	
 	task.spawn(function()
-		repeat task.wait(1) until vape.Loaded or vape.Loaded == nil
-		if vape.Loaded and not StaffDetector.Enabled then
+		repeat task.wait(1) until oofer.Loaded or oofer.Loaded == nil
+		if oofer.Loaded and not StaffDetector.Enabled then
 			StaffDetector:Toggle()
 		end
 	end)
 end)
 	
 run(function()
-	TrapDisabler = vape.Categories.Utility:CreateModule({
+	TrapDisabler = oofer.Categories.Utility:CreateModule({
 		Name = 'TrapDisabler',
 		Tooltip = 'Disables Snap Traps'
 	})
 end)
 	
 run(function()
-	vape.Categories.World:CreateModule({
+	oofer.Categories.World:CreateModule({
 		Name = 'Anti-AFK',
 		Function = function(callback)
 			if callback then
@@ -5218,7 +5218,7 @@ run(function()
 		return bedwars.BlockController:getBlockPosition(pos) * 3
 	end
 	
-	AutoSuffocate = vape.Categories.World:CreateModule({
+	AutoSuffocate = oofer.Categories.World:CreateModule({
 		Name = 'AutoSuffocate',
 		Function = function(callback)
 			if callback then
@@ -5302,7 +5302,7 @@ run(function()
 		end
 	end
 	
-	AutoTool = vape.Categories.World:CreateModule({
+	AutoTool = oofer.Categories.World:CreateModule({
 		Name = 'AutoTool',
 		Function = function(callback)
 			if callback then
@@ -5365,7 +5365,7 @@ run(function()
 		return positions
 	end
 	
-	BedProtector = vape.Categories.World:CreateModule({
+	BedProtector = oofer.Categories.World:CreateModule({
 		Name = 'BedProtector',
 		Function = function(callback)
 			if callback then
@@ -5420,7 +5420,7 @@ run(function()
 		end
 	end
 	
-	ChestSteal = vape.Categories.World:CreateModule({
+	ChestSteal = oofer.Categories.World:CreateModule({
 		Name = 'ChestSteal',
 		Function = function(callback)
 			if callback then
@@ -5638,7 +5638,7 @@ run(function()
 		end
 	end
 	
-	Schematica = vape.Categories.World:CreateModule({
+	Schematica = oofer.Categories.World:CreateModule({
 		Name = 'Schematica',
 		Function = function(callback)
 			if callback then
@@ -5703,7 +5703,7 @@ run(function()
 	local Targets
 	local Range
 	
-	ArmorSwitch = vape.Categories.Inventory:CreateModule({
+	ArmorSwitch = oofer.Categories.Inventory:CreateModule({
 		Name = 'ArmorSwitch',
 		Function = function(callback)
 			if callback then
@@ -5724,7 +5724,7 @@ run(function()
 									item = store.inventory.inventory.armor[i + 1] == 'empty' and state and getBestArmor(i) or nil,
 									armorSlot = i
 								})
-								vapeEvents.InventoryChanged.Event:Wait()
+								ooferEvents.InventoryChanged.Event:Wait()
 							end
 						end
 						task.wait(0.1)
@@ -5737,7 +5737,7 @@ run(function()
 							item = store.inventory.inventory.armor[i + 1] == 'empty' and getBestArmor(i) or nil,
 							armorSlot = i
 						})
-						vapeEvents.InventoryChanged.Event:Wait()
+						ooferEvents.InventoryChanged.Event:Wait()
 					end
 				end
 			end
@@ -5837,7 +5837,7 @@ run(function()
 		end
 	end
 	
-	AutoBank = vape.Categories.Inventory:CreateModule({
+	AutoBank = oofer.Categories.Inventory:CreateModule({
 		Name = 'AutoBank',
 		Function = function(callback)
 			if callback then
@@ -5847,7 +5847,7 @@ run(function()
 				UI.Position = UDim2.fromOffset(0, -240)
 				UI.BackgroundTransparency = 1
 				UI.Visible = UIToggle.Enabled
-				UI.Parent = vape.gui
+				UI.Parent = oofer.gui
 				AutoBank:Clean(UI)
 				local Sort = Instance.new('UIListLayout')
 				Sort.FillDirection = Enum.FillDirection.Horizontal
@@ -6044,7 +6044,7 @@ run(function()
 		return bought
 	end
 	
-	AutoBuy = vape.Categories.Inventory:CreateModule({
+	AutoBuy = oofer.Categories.Inventory:CreateModule({
 		Name = 'AutoBuy',
 		Function = function(callback)
 			if callback then
@@ -6052,7 +6052,7 @@ run(function()
 				if BedwarsCheck.Enabled and not store.queueType:find('bedwars') then return end
 	
 				local lastupgrades
-				AutoBuy:Clean(vapeEvents.InventoryAmountChanged.Event:Connect(function()
+				AutoBuy:Clean(ooferEvents.InventoryAmountChanged.Event:Connect(function()
 					if (npctick - tick()) > 1 then npctick = tick() end
 				end))
 	
@@ -6270,12 +6270,12 @@ run(function()
 		end
 	end
 	
-	AutoConsume = vape.Categories.Inventory:CreateModule({
+	AutoConsume = oofer.Categories.Inventory:CreateModule({
 		Name = 'AutoConsume',
 		Function = function(callback)
 			if callback then
-				AutoConsume:Clean(vapeEvents.InventoryAmountChanged.Event:Connect(consumeCheck))
-				AutoConsume:Clean(vapeEvents.AttributeChanged.Event:Connect(function(attribute)
+				AutoConsume:Clean(ooferEvents.InventoryAmountChanged.Event:Connect(consumeCheck))
+				AutoConsume:Clean(ooferEvents.AttributeChanged.Event:Connect(function(attribute)
 					if attribute:find('Shield') or attribute:find('Health') or attribute == 'StatusEffect_speed' then
 						consumeCheck(attribute)
 					end
@@ -6322,7 +6322,7 @@ run(function()
 		window.BackgroundColor3 = uipallet.Main
 		window.AnchorPoint = Vector2.new(0.5, 0.5)
 		window.Visible = false
-		window.Parent = vape.gui.ScaledGui
+		window.Parent = oofer.gui.ScaledGui
 		local title = Instance.new('TextLabel')
 		title.Name = 'Title'
 		title.Size = UDim2.new(1, -10, 0, 20)
@@ -6356,7 +6356,7 @@ run(function()
 		close.Position = UDim2.new(1, -35, 0, 9)
 		close.BackgroundColor3 = Color3.new(1, 1, 1)
 		close.BackgroundTransparency = 1
-		close.Image = getcustomasset('newvape/assets/new/close.png')
+		close.Image = getcustomasset('newoofer/assets/new/close.png')
 		close.ImageColor3 = color.Light(uipallet.Text, 0.2)
 		close.ImageTransparency = 0.5
 		close.AutoButtonColor = false
@@ -6375,7 +6375,7 @@ run(function()
 		end)
 		close.MouseButton1Click:Connect(function()
 			window.Visible = false
-			vape.gui.ScaledGui.ClickGui.Visible = true
+			oofer.gui.ScaledGui.ClickGui.Visible = true
 		end)
 		local closecorner = Instance.new('UICorner')
 		closecorner.CornerRadius = UDim.new(1, 0)
@@ -6470,7 +6470,7 @@ run(function()
 		searchicon.Size = UDim2.fromOffset(14, 14)
 		searchicon.Position = UDim2.new(1, -26, 0, 8)
 		searchicon.BackgroundTransparency = 1
-		searchicon.Image = getcustomasset('newvape/assets/new/search.png')
+		searchicon.Image = getcustomasset('newoofer/assets/new/search.png')
 		searchicon.ImageColor3 = color.Light(uipallet.Main, 0.37)
 		searchicon.Parent = searchbkg
 		local children = Instance.new('ScrollingFrame')
@@ -6490,12 +6490,12 @@ run(function()
 		windowlist.CellPadding = UDim2.fromOffset(4, 3)
 		windowlist.Parent = children
 		windowlist:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			if vape.ThreadFix then
+			if oofer.ThreadFix then
 				setthreadidentity(8)
 			end
-			children.CanvasSize = UDim2.fromOffset(0, windowlist.AbsoluteContentSize.Y / vape.guiscale.Scale)
+			children.CanvasSize = UDim2.fromOffset(0, windowlist.AbsoluteContentSize.Y / oofer.guiscale.Scale)
 		end)
-		table.insert(vape.Windows, window)
+		table.insert(oofer.Windows, window)
 	
 		local function createitem(id, image)
 			local slotbkg = Instance.new('TextButton')
@@ -6559,8 +6559,8 @@ run(function()
 		return window
 	end
 	
-	vape.Components.HotbarList = function(optionsettings, children, api)
-		if vape.ThreadFix then
+	oofer.Components.HotbarList = function(optionsettings, children, api)
+		if oofer.ThreadFix then
 			setthreadidentity(8)
 		end
 		local optionapi = {
@@ -6611,7 +6611,7 @@ run(function()
 		textbuttonicon.Position = UDim2.fromScale(0.5, 0.5)
 		textbuttonicon.AnchorPoint = Vector2.new(0.5, 0.5)
 		textbuttonicon.BackgroundTransparency = 1
-		textbuttonicon.Image = getcustomasset('newvape/assets/new/add.png')
+		textbuttonicon.Image = getcustomasset('newoofer/assets/new/add.png')
 		textbuttonicon.ImageColor3 = Color3.fromHSV(0.46, 0.96, 0.52)
 		textbuttonicon.Parent = textbutton
 		local childrenlist = Instance.new('Frame')
@@ -6625,10 +6625,10 @@ run(function()
 		windowlist.Padding = UDim.new(0, 3)
 		windowlist.Parent = childrenlist
 		windowlist:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
-			if vape.ThreadFix then
+			if oofer.ThreadFix then
 				setthreadidentity(8)
 			end
-			hotbarlist.Size = UDim2.fromOffset(220, math.min(43 + windowlist.AbsoluteContentSize.Y / vape.guiscale.Scale, 603))
+			hotbarlist.Size = UDim2.fromOffset(220, math.min(43 + windowlist.AbsoluteContentSize.Y / oofer.guiscale.Scale, 603))
 		end)
 		textbutton.MouseButton1Click:Connect(function()
 			optionapi:AddHotbar()
@@ -6685,7 +6685,7 @@ run(function()
 			hotbar.MouseButton1Click:Connect(function()
 				local ind = table.find(optionapi.Hotbars, hotbardata)
 				if ind == optionapi.Selected then
-					vape.gui.ScaledGui.ClickGui.Visible = false
+					oofer.gui.ScaledGui.ClickGui.Visible = false
 					optionapi.Window.Visible = true
 					for i = 1, 9 do
 						optionapi.Window['Slot'..i].ImageLabel.Image = hotbardata.Hotbar[tostring(i)] and bedwars.getIcon({itemType = hotbardata.Hotbar[tostring(i)]}, true) or ''
@@ -6704,7 +6704,7 @@ run(function()
 			close.Position = UDim2.new(1, -23, 0, 6)
 			close.BackgroundColor3 = Color3.new(1, 1, 1)
 			close.BackgroundTransparency = 1
-			close.Image = getcustomasset('newvape/assets/new/closemini.png')
+			close.Image = getcustomasset('newoofer/assets/new/closemini.png')
 			close.ImageColor3 = color.Light(uipallet.Text, 0.2)
 			close.ImageTransparency = 0.5
 			close.AutoButtonColor = false
@@ -6804,7 +6804,7 @@ run(function()
 	
 	local function dispatch(...)
 		bedwars.Store:dispatch(...)
-		vapeEvents.InventoryChanged.Event:Wait()
+		ooferEvents.InventoryChanged.Event:Wait()
 	end
 	
 	local function sortCallback()
@@ -6858,7 +6858,7 @@ run(function()
 		Active = false
 	end
 	
-	AutoHotbar = vape.Categories.Inventory:CreateModule({
+	AutoHotbar = oofer.Categories.Inventory:CreateModule({
 		Name = 'AutoHotbar',
 		Function = function(callback)
 			if callback then
@@ -6868,7 +6868,7 @@ run(function()
 					return
 				end
 	
-				AutoHotbar:Clean(vapeEvents.InventoryAmountChanged.Event:Connect(sortCallback))
+				AutoHotbar:Clean(ooferEvents.InventoryAmountChanged.Event:Connect(sortCallback))
 			end
 		end,
 		Tooltip = 'Automatically arranges hotbar to your liking.'
@@ -6891,7 +6891,7 @@ run(function()
 	local Value
 	local oldclickhold, oldshowprogress
 	
-	local FastConsume = vape.Categories.Inventory:CreateModule({
+	local FastConsume = oofer.Categories.Inventory:CreateModule({
 		Name = 'FastConsume',
 		Function = function(callback)
 			if callback then
@@ -6962,7 +6962,7 @@ end)
 run(function()
 	local FastDrop
 	
-	FastDrop = vape.Categories.Inventory:CreateModule({
+	FastDrop = oofer.Categories.Inventory:CreateModule({
 		Name = 'FastDrop',
 		Function = function(callback)
 			if callback then
@@ -6986,7 +6986,7 @@ run(function()
 	local Color = {}
 	local Reference = {}
 	local Folder = Instance.new('Folder')
-	Folder.Parent = vape.gui
+	Folder.Parent = oofer.gui
 	
 	local function scanSide(self, start, tab)
 		for _, side in sides do
@@ -7066,15 +7066,15 @@ run(function()
 		end
 	end
 	
-	BedPlates = vape.Categories.Minigames:CreateModule({
+	BedPlates = oofer.Categories.Minigames:CreateModule({
 		Name = 'BedPlates',
 		Function = function(callback)
 			if callback then
 				for _, v in collectionService:GetTagged('bed') do 
 					task.spawn(Added, v) 
 				end
-				BedPlates:Clean(vapeEvents.PlaceBlockEvent.Event:Connect(refreshNear))
-				BedPlates:Clean(vapeEvents.BreakBlockEvent.Event:Connect(refreshNear))
+				BedPlates:Clean(ooferEvents.PlaceBlockEvent.Event:Connect(refreshNear))
+				BedPlates:Clean(ooferEvents.BreakBlockEvent.Event:Connect(refreshNear))
 				BedPlates:Clean(collectionService:GetInstanceAddedSignal('bed'):Connect(Added))
 				BedPlates:Clean(collectionService:GetInstanceRemovedSignal('bed'):Connect(function(v)
 					if Reference[v] then
@@ -7170,7 +7170,7 @@ run(function()
 						Size = UDim2.new(1, 89, 1, 52),
 						Position = UDim2.fromOffset(-48, -31),
 						BackgroundTransparency = 1,
-						Image = getcustomasset('newvape/assets/new/blur.png'),
+						Image = getcustomasset('newoofer/assets/new/blur.png'),
 						ScaleType = Enum.ScaleType.Slice,
 						SliceCenter = Rect.new(52, 31, 261, 502)
 					}),
@@ -7266,7 +7266,7 @@ run(function()
 		return false
 	end
 	
-	Breaker = vape.Categories.Minigames:CreateModule({
+	Breaker = oofer.Categories.Minigames:CreateModule({
 		Name = 'Breaker',
 		Function = function(callback)
 			if callback then
@@ -7399,11 +7399,11 @@ run(function()
 	local List
 	local NameToId = {}
 	
-	BedBreakEffect = vape.Legit:CreateModule({
+	BedBreakEffect = oofer.Legit:CreateModule({
 		Name = 'Bed Break Effect',
 		Function = function(callback)
 			if callback then
-	            BedBreakEffect:Clean(vapeEvents.BedwarsBedBreak.Event:Connect(function(data)
+	            BedBreakEffect:Clean(ooferEvents.BedwarsBedBreak.Event:Connect(function(data)
 	                firesignal(bedwars.Client:Get('BedBreakEffectTriggered').instance.OnClientEvent, {
 	                    player = data.player,
 	                    position = data.bedBlockPosition * 3,
@@ -7429,7 +7429,7 @@ run(function()
 end)
 	
 run(function()
-	vape.Legit:CreateModule({
+	oofer.Legit:CreateModule({
 		Name = 'Clean Kit',
 		Function = function(callback)
 			if callback then
@@ -7448,7 +7448,7 @@ run(function()
 	local old
 	local Image
 	
-	local Crosshair = vape.Legit:CreateModule({
+	local Crosshair = oofer.Legit:CreateModule({
 		Name = 'Crosshair',
 		Function = function(callback)
 			if callback then
@@ -7493,7 +7493,7 @@ run(function()
 	tab = suc and tab or {}
 	local oldvalues, oldfont = {}
 	
-	DamageIndicator = vape.Legit:CreateModule({
+	DamageIndicator = oofer.Legit:CreateModule({
 		Name = 'Damage Indicator',
 		Function = function(callback)
 			if callback then
@@ -7581,7 +7581,7 @@ run(function()
 	local Value
 	local old, old2
 	
-	FOV = vape.Legit:CreateModule({
+	FOV = oofer.Legit:CreateModule({
 		Name = 'FOV',
 		Function = function(callback)
 			if callback then
@@ -7615,7 +7615,7 @@ run(function()
 	local Visualizer
 	local effects, util = {}, {}
 	
-	FPSBoost = vape.Legit:CreateModule({
+	FPSBoost = oofer.Legit:CreateModule({
 		Name = 'FPS Boost',
 		Function = function(callback)
 			if callback then
@@ -7692,7 +7692,7 @@ run(function()
 	local Color
 	local done = {}
 	
-	HitColor = vape.Legit:CreateModule({
+	HitColor = oofer.Legit:CreateModule({
 		Name = 'Hit Color',
 		Function = function(callback)
 			if callback then 
@@ -7726,7 +7726,7 @@ run(function()
 end)
 	
 run(function()
-	vape.Legit:CreateModule({
+	oofer.Legit:CreateModule({
 		Name = 'HitFix',
 		Function = function(callback)
 			debug.setconstant(bedwars.SwordController.swingSwordAtMouse, 23, callback and 'raycast' or 'Raycast')
@@ -7743,7 +7743,7 @@ run(function()
 	local HotbarApp = getRoactRender(require(lplr.PlayerScripts.TS.controllers.global.hotbar.ui['hotbar-app']).HotbarApp.render)
 	local old, new = {}, {}
 	
-	vape:Clean(function()
+	oofer:Clean(function()
 		for _, v in new do
 			table.clear(v)
 		end
@@ -7774,7 +7774,7 @@ run(function()
 		end
 	end
 	
-	Interface = vape.Legit:CreateModule({
+	Interface = oofer.Legit:CreateModule({
 		Name = 'Interface',
 		Function = function(callback)
 			for i, v in (callback and new or old) do
@@ -7932,7 +7932,7 @@ run(function()
 		end
 	}
 	
-	KillEffect = vape.Legit:CreateModule({
+	KillEffect = oofer.Legit:CreateModule({
 		Name = 'Kill Effect',
 		Function = function(callback)
 			if callback then
@@ -7997,7 +7997,7 @@ run(function()
 	local ReachDisplay
 	local label
 	
-	ReachDisplay = vape.Legit:CreateModule({
+	ReachDisplay = oofer.Legit:CreateModule({
 		Name = 'Reach Display',
 		Function = function(callback)
 			if callback then
@@ -8086,7 +8086,7 @@ run(function()
 		end
 	end
 	
-	SongBeats = vape.Legit:CreateModule({
+	SongBeats = oofer.Legit:CreateModule({
 		Name = 'Song Beats',
 		Function = function(callback)
 			if callback then
@@ -8163,7 +8163,7 @@ run(function()
 	local soundlist = {}
 	local old
 	
-	SoundChanger = vape.Legit:CreateModule({
+	SoundChanger = oofer.Legit:CreateModule({
 		Name = 'SoundChanger',
 		Function = function(callback)
 			if callback then
@@ -8208,7 +8208,7 @@ run(function()
 	local old, new = {}, {}
 	local oldkillfeed
 	
-	vape:Clean(function()
+	oofer:Clean(function()
 		for _, v in new do
 			table.clear(v)
 		end
@@ -8240,7 +8240,7 @@ run(function()
 		end
 	end
 	
-	UICleanup = vape.Legit:CreateModule({
+	UICleanup = oofer.Legit:CreateModule({
 		Name = 'UI Cleanup',
 		Function = function(callback)
 			for i, v in (callback and new or old) do
@@ -8360,7 +8360,7 @@ run(function()
 	local Rots = {}
 	local old, oldc1
 	
-	Viewmodel = vape.Legit:CreateModule({
+	Viewmodel = oofer.Legit:CreateModule({
 		Name = 'Viewmodel',
 		Function = function(callback)
 			local viewmodel = gameCamera:FindFirstChild('Viewmodel')
@@ -8461,11 +8461,11 @@ run(function()
 	local List
 	local NameToId = {}
 	
-	WinEffect = vape.Legit:CreateModule({
+	WinEffect = oofer.Legit:CreateModule({
 		Name = 'WinEffect',
 		Function = function(callback)
 			if callback then
-				WinEffect:Clean(vapeEvents.MatchEndEvent.Event:Connect(function()
+				WinEffect:Clean(ooferEvents.MatchEndEvent.Event:Connect(function()
 					for i, v in getconnections(bedwars.Client:Get('WinEffectTriggered').instance.OnClientEvent) do
 						if v.Function then
 							v.Function({
