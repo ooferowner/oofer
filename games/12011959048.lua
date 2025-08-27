@@ -35,12 +35,12 @@ vape.Place = 11630038968
 if isfile('newvape/games/'..vape.Place..'.lua') then
 	loadstring(readfile('newvape/games/'..vape.Place..'.lua'), 'bridge duel')()
 else
-	if not shared.VapeDeveloper then
-		local suc, res = pcall(function() 
-			return game:HttpGet('https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/'..readfile('newvape/profiles/commit.txt')..'/games/'..vape.Place..'.lua', true) 
-		end)
-		if suc and res ~= '404: Not Found' then
-			loadstring(downloadFile('newvape/games/'..vape.Place..'.lua'), 'bridge duel')()
-		end
-	end
+	if not shared.OoferDeveloper then
+    local suc, res = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/ooferowner/oofer/" .. readfile("oofer/profiles/commit.txt") .. "/games/" .. oofer.Place .. ".lua", true)
+    end)
+    if suc and res ~= "404: Not Found" then
+        loadstring(downloadFile("oofer/games/" .. oofer.Place .. ".lua"), "bridge duel")()
+    end
+end
 end
