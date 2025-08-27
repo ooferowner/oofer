@@ -14,9 +14,12 @@ local isfile = isfile or function(file)
 end
 local function downloadFile(path, func)
 	if not isfile(path) then
-		local suc, res = pcall(function() 
-			return game:HttpGet('https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/'..readfile('newvape/profiles/commit.txt')..'/'..select(1, path:gsub('newvape/', '')), true) 
-		end)
+		local suc, res = pcall(function()
+    local commit = readfile("oofer/profiles/commit.txt")
+    local relative = path:gsub("oofer/", "")
+    local url = "https://raw.githubusercontent.com/ooferowner/oofer/" .. commit .. "/" .. relative
+    return game:HttpGet(url, true)
+end)
 		if not suc or res == '404: Not Found' then 
 			error(res) 
 		end
