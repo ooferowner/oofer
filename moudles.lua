@@ -1,41 +1,37 @@
 run(function()
-    local VelocityBoost
-    local BoostAmount
-    local AutoToggle
-
-    VelocityBoost = oofer.Categories.Combat:CreateButton({
+    -- Create main button in Combat category
+    local VelocityBoost = mainapi.Categories.Combat:CreateButton({
         Name = "Velocity Boost",
-        Tooltip = "Applies extra velocity when attacking",
+        Tooltip = "Adds hostile velocity when attacking",
         ExtraText = function()
-            return "v1.2"
+            return "v1.0"
         end,
+        Keybind = Enum.KeyCode.V, -- default keybind
         Function = function(state)
-            print("Velocity Boost:", state)
-            print("Boost Amount:", BoostAmount.Value)
-            print("Auto Toggle:", AutoToggle.Enabled)
+            print("[VelocityBoost] Activated via button/keybind")
         end
     })
 
-    BoostAmount = VelocityBoost:CreateSlider({
+    -- Toggle: Auto Apply
+    local AutoToggle = VelocityBoost:CreateToggle({
+        Name = "Auto Apply",
+        Default = true,
+        Tooltip = "Automatically apply boost on hit",
+        Keybind = Enum.KeyCode.B, -- toggle keybind
+        Function = function(enabled, fromKey)
+            print("[VelocityBoost] Auto Apply:", enabled, "Triggered by key:", fromKey)
+        end
+    })
+
+    -- Slider: Boost Amount
+    local BoostAmount = VelocityBoost:CreateSlider({
         Name = "Boost Amount",
         Min = 10,
         Max = 100,
         Default = 50,
-        Suffix = function(val)
-            return val .. "%"
-        end,
+        Tooltip = "Controls how much velocity is added",
         Function = function(val)
-            print("Boost set to:", val)
-        end,
-        Tooltip = "Controls how much velocity is added"
-    })
-
-    AutoToggle = VelocityBoost:CreateToggle({
-        Name = "Auto Apply",
-        Default = true,
-        Function = function(val)
-            print("Auto Apply:", val)
-        end,
-        Tooltip = "Automatically apply boost on hit"
+            print("[VelocityBoost] Boost set to:", val)
+        end
     })
 end)
