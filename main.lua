@@ -1,14 +1,21 @@
--- HOSTILE GUI: FULL-SCREEN PULSE + MATRIX REVEAL + OVERLAYED BINARY RAIN + CATEGORY TOGGLE + GLOBAL "oof" HIDE/SHOW BUTTON
+-- OOFER: Full hostile GUI with Open/Close toggle (left-center), RightShift hotkey, and blur control
+-- Delivers: full-screen pulse, matrix reveal, overlay binary rain, category panels, global hide/show
+
+-- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 
+-- Assets / constants
 local DECAL = "rbxassetid://86828470035784"
 local FONT = Enum.Font.Arcade
 local CONFIG_FILE = "oofer_config.json"
 
+-- Config
 local Config = { UI = { CurrentCategory = nil }, Modules = {} }
 
 local function Save()
@@ -18,6 +25,7 @@ local function Save()
 	end
 end
 
+-- Utils
 local function AutoFitText(label, maxSize)
 	label.TextSize = maxSize
 	label.TextWrapped = false
@@ -27,7 +35,7 @@ local function AutoFitText(label, maxSize)
 		task.wait()
 		while label.TextBounds.X > label.AbsoluteSize.X - 4 and label.TextSize > 8 do
 			label.TextSize -= 1
-			task.wait()
+			RunService.Heartbeat:Wait()
 		end
 	end
 	shrink()
@@ -35,7 +43,13 @@ local function AutoFitText(label, maxSize)
 	label:GetPropertyChangedSignal("AbsoluteSize"):Connect(shrink)
 end
 
--- Matrix charset animation (load-in)
+local function WaitForSize(gui)
+	if gui.AbsoluteSize.X <= 0 or gui.AbsoluteSize.Y <= 0 then
+		repeat RunService.Heartbeat:Wait() until not gui.Parent or (gui.AbsoluteSize.X > 0 and gui.AbsoluteSize.Y > 0)
+	end
+end
+
+-- Matrix reveal
 local MATRIX_CHARS = {"ｱ","ｲ","ｳ","ｴ","ｵ","ｶ","ｷ","ｸ","ｹ","ｺ","ｻ","ｼ","ｽ","ｾ","ｿ","ﾀ","ﾁ","ﾂ","ﾃ","ﾄ","ﾅ","ﾆ","ﾇ","ﾈ","ﾉ","ﾊ","ﾋ","ﾌ","ﾍ","ﾎ","ﾏ","ﾐ","ﾑ","ﾒ","ﾓ","ﾔ","ﾕ","ﾖ","ﾗ","ﾘ","ﾙ","ﾚ","ﾛ","ﾜ","ﾝ","0","1","2","3","4","5","6","7","8","9"}
 local function MatrixReveal(label, finalText, delayPerChar)
 	label.Text = ""
@@ -51,7 +65,7 @@ local function MatrixReveal(label, finalText, delayPerChar)
 	end
 end
 
--- Full-screen pulsing blue background (no rotation)
+-- Background pulse
 local function CreateFullBackground(parent)
 	local BG = Instance.new("Frame")
 	BG.Size = UDim2.new(1, 0, 1, 0)
@@ -60,6 +74,7 @@ local function CreateFullBackground(parent)
 	BG.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
 	BG.BorderSizePixel = 0
 	BG.ZIndex = 0
+	BG.Name = "HostilePulse"
 	BG.Parent = parent
 
 	local grad = Instance.new("UIGradient")
@@ -79,14 +94,7 @@ local function CreateFullBackground(parent)
 	end)
 end
 
--- Utility: wait until AbsoluteSize is non-zero
-local function WaitForSize(gui)
-	if gui.AbsoluteSize.X <= 0 or gui.AbsoluteSize.Y <= 0 then
-		repeat RunService.Heartbeat:Wait() until not gui.Parent or (gui.AbsoluteSize.X > 0 and gui.AbsoluteSize.Y > 0)
-	end
-end
-
--- Spawn a single vertical falling 0/1 stream OVER a label (overlay), clipped by the label bounds
+-- Binary rain overlay
 local function SpawnBinaryStream(overLabel, xPosPixels, opts)
 	opts = opts or {}
 	local streamLength = opts.length or 30
@@ -114,9 +122,7 @@ local function SpawnBinaryStream(overLabel, xPosPixels, opts)
 	stream.Parent = overLabel
 
 	local lines = table.create(streamLength)
-	for i = 1, streamLength do
-		lines[i] = tostring(math.random(0,1))
-	end
+	for i = 1, streamLength do lines[i] = tostring(math.random(0,1)) end
 	stream.Text = table.concat(lines, "\n")
 
 	local grad = Instance.new("UIGradient")
@@ -142,17 +148,13 @@ local function SpawnBinaryStream(overLabel, xPosPixels, opts)
 
 	task.delay(math.max(0, fallTime - fadeTime), function()
 		if stream and stream.Parent then
-			local tweenFade = TweenService:Create(stream, TweenInfo.new(fadeTime), {TextTransparency = 1})
-			tweenFade:Play()
+			TweenService:Create(stream, TweenInfo.new(fadeTime), {TextTransparency = 1}):Play()
 		end
 	end)
 
-	task.delay(fallTime + 0.05, function()
-		if stream then stream:Destroy() end
-	end)
+	task.delay(fallTime + 0.05, function() if stream then stream:Destroy() end end)
 end
 
--- Continuous loop to spawn random streams over a label
 local function StartOverlayRain(overLabel, opts)
 	opts = opts or {}
 	local spawnRateMin = opts.rateMin or 0.06
@@ -163,7 +165,7 @@ local function StartOverlayRain(overLabel, opts)
 		if not overLabel.Parent then return end
 		while overLabel.Parent do
 			local w = overLabel.AbsoluteSize.X
-			if w <= 0 then RunService.Heartbeat:Wait() else
+			if w > 0 then
 				local textSize = math.max(10, math.floor(overLabel.TextSize))
 				local colWidth = math.max(10, math.floor(textSize * 0.8))
 				local x = math.random(0, math.max(0, w - colWidth))
@@ -173,15 +175,41 @@ local function StartOverlayRain(overLabel, opts)
 					fallTime = opts.fallTime or 1.15
 				})
 				task.wait(math.random() * (spawnRateMax - spawnRateMin) + spawnRateMin)
+			else
+				RunService.Heartbeat:Wait()
 			end
 		end
 	end)
 end
 
--- GUI
+-- Blur control
+local BLUR_NAME = "OOFER_BLUR"
+local function GetOrCreateBlur()
+	local blur = Lighting:FindFirstChild(BLUR_NAME)
+	if not blur then
+		blur = Instance.new("BlurEffect")
+		blur.Name = BLUR_NAME
+		blur.Size = 0
+		blur.Enabled = false
+		blur.Parent = Lighting
+	end
+	return blur
+end
+
+local function SetBlurEnabled(state)
+	local blur = GetOrCreateBlur()
+	if state then
+		blur.Enabled = true
+		TweenService:Create(blur, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size = 18}):Play()
+	else
+		TweenService:Create(blur, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Size = 0}):Play()
+		task.delay(0.22, function() if blur then blur.Enabled = false end end)
+	end
+end
+
+-- GUI roots
 local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Main GUI (everything hostile lives here; we will toggle this on/off)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
@@ -190,7 +218,7 @@ ScreenGui.Parent = playerGui
 
 CreateFullBackground(ScreenGui)
 
--- Main hostile decal panel
+-- Main panel
 local HostilePanel = Instance.new("ImageLabel")
 HostilePanel.Size = UDim2.new(0, 280, 0, 420)
 HostilePanel.Position = UDim2.new(0.3, 0, 0.3, 0)
@@ -203,7 +231,7 @@ HostilePanel.Draggable = true
 HostilePanel.ZIndex = 1
 HostilePanel.Parent = ScreenGui
 
--- Title (static text + load reveal + overlay rain)
+-- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -8, 0, 36)
 Title.Position = UDim2.new(0, 4, 0, 4)
@@ -229,7 +257,7 @@ task.spawn(function()
 	})
 end)
 
--- Scrollable category list
+-- Category scroller
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1, -12, 1, -50)
 Scroll.Position = UDim2.new(0, 6, 0, 46)
@@ -246,9 +274,9 @@ layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 6)
 layout.Parent = Scroll
 
--- PANEL TOGGLING + LAYOUT
-local openPanels = {}   -- name -> Panel
-local spawnedPanels = {} -- ordered list for layout
+-- Category panels + layout
+local openPanels = {}     -- name -> Panel
+local spawnedPanels = {}  -- ordered list for layout
 local panelSpacing = 10
 
 local function LayoutPanels()
@@ -311,10 +339,7 @@ local function ToggleCategoryPanel(name)
 		local panel = openPanels[name]
 		openPanels[name] = nil
 		for i, p in ipairs(spawnedPanels) do
-			if p == panel then
-				table.remove(spawnedPanels, i)
-				break
-			end
+			if p == panel then table.remove(spawnedPanels, i) break end
 		end
 		panel:Destroy()
 		LayoutPanels()
@@ -326,10 +351,8 @@ local function ToggleCategoryPanel(name)
 	end
 end
 
--- Exact category order
 local CategoryList = { "Combat", "Blatant", "Render", "Utility", "World", "Friends", "Profiles", "Targets" }
 
--- Create category buttons (MatrixReveal; toggles panel open/close)
 for _, name in ipairs(CategoryList) do
 	local Btn = Instance.new("TextButton")
 	Btn.Size = UDim2.new(1, 0, 0, 36)
@@ -339,9 +362,7 @@ for _, name in ipairs(CategoryList) do
 	Btn.ZIndex = 2
 	Btn.Parent = Scroll
 	AutoFitText(Btn, 18)
-	task.spawn(function()
-		MatrixReveal(Btn, name, 0.02)
-	end)
+	task.spawn(function() MatrixReveal(Btn, name, 0.02) end)
 	Btn.MouseButton1Click:Connect(function()
 		Config.UI.CurrentCategory = name
 		Save()
@@ -349,7 +370,7 @@ for _, name in ipairs(CategoryList) do
 	end)
 end
 
--- GLOBAL "oof" TOGGLE (SEPARATE GUI SO IT STAYS CLICKABLE WHEN MAIN GUI IS HIDDEN)
+-- Global Open/Close toggle (left-center, no background) + RightShift hotkey
 local ToggleGui = Instance.new("ScreenGui")
 ToggleGui.ResetOnSpawn = false
 ToggleGui.IgnoreGuiInset = true
@@ -357,12 +378,13 @@ ToggleGui.Name = "OOF_TOGGLE"
 ToggleGui.Parent = playerGui
 
 local OofBtn = Instance.new("TextButton")
-OofBtn.Size = UDim2.new(0, 44, 0, 22)
-OofBtn.Position = UDim2.new(0, 8, 0, 8)
-OofBtn.BackgroundTransparency = 1 -- no background
+OofBtn.Size = UDim2.new(0, 100, 0, 28)
+OofBtn.AnchorPoint = Vector2.new(0, 0.5)
+OofBtn.Position = UDim2.new(0, 8, 0.5, 0) -- left edge, vertical middle
+OofBtn.BackgroundTransparency = 1
 OofBtn.BorderSizePixel = 0
 OofBtn.Font = FONT
-OofBtn.Text = "oof"
+OofBtn.Text = "Open/Close"
 OofBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
 OofBtn.TextStrokeTransparency = 0.2
 OofBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
@@ -372,15 +394,21 @@ OofBtn.Parent = ToggleGui
 local isOpen = true
 local function SetOpen(state)
 	isOpen = state
-	ScreenGui.Enabled = isOpen -- hides/shows EVERYTHING inside, including the pulsing blur
-	-- Optional: visual cue on the toggle itself
+	ScreenGui.Enabled = isOpen
+	SetBlurEnabled(isOpen)
 	OofBtn.TextColor3 = isOpen and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 80, 80)
-	OofBtn.Text = isOpen and "oof" or "OOF"
 end
 
 OofBtn.MouseButton1Click:Connect(function()
 	SetOpen(not isOpen)
 end)
 
--- Start in open state
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		SetOpen(not isOpen)
+	end
+end)
+
+-- Initialize
 SetOpen(true)
